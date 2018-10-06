@@ -12,8 +12,9 @@ class DatabaseHandle:
     host: str = None
     db: str = None
 
-    def __init__(self, user, pw, db, host):
-        self.connection = sql.connect(user=user, password=pw, db=db, host=host)
+    def __init__(self, user, password, db, host):
+        self.connection = sql.connect(
+            user=user, password=password, db=db, host=host)
         self.cursor = self.connection.cursor()
         self.user = user
         self.host = host

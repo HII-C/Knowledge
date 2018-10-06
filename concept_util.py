@@ -19,9 +19,9 @@ class ConceptType(Enum):
         return table_dict[self.value]
 
     def get_field(self) -> str:
-        field_dict = {'Condition': '(ICD9_CODE)',
-                      'Observation': '(LOINC_CODE)',
-                      'Treatment': '(RXNORM_CODE)'}
+        field_dict = {'Condition': 'ICD9_CODE',
+                      'Observation': 'LOINC_CODE',
+                      'Treatment': 'RXNORM_CODE'}
         return field_dict[self.value]
 
 
