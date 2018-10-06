@@ -25,7 +25,7 @@ class ProcessPtData:
     code_universe: List[str] = list()
     # Bidirectional dict (1-1 map); read about: https://pypi.org/project/bidict/
     # This is mapping [code (type=str): int_rep_of_code (for simplification in ML model)]
-    code_map: bidict = bidict(dict())
+    code_map: bidict = dict()
 
     def __init__(self, db, pt_count, target, rnd_pt_tbl='derived.patients_as_index'):
         self.target_concept = target
@@ -46,23 +46,24 @@ class ProcessPtData:
         ''' Create the universe of codes based on the current
         patient_concept dictionary in the object. '''
         map_count = 0
+        tmp_cm = dict()
         for pt_codes in self.input_pt_data.values():
             for code in pt_codes:
-                if not self.code_map.get(code):
+                if code not in tmp_cm and code is not None:
+                    tmp_cm[code] = map_count
                     map_count += 1
-                    self.code_map[code] = map_count
-        self.code_universe = list(self.code_map.keys())
+        self.code_map = {k: v for (k, v) in tmp_cm.items()}
+        self.code_universe = self.code_map.keys()
+
         if __print__:
             print(f'There are {map_count} codes in the current universe')
 
     def inp_matrix_creation(self) -> PatientMatrix:
         full_pt_dict = defaultdict(list)
         for pt in self.input_pt_data:
-            for code in self.code_universe:
-                if code in self.input_pt_data[pt]:
-                    full_pt_dict[pt].append(1)
-                else:
-                    full_pt_dict[pt].append(0)
+            full_pt_dict[pt] = [0]*len(self.code_universe)
+            for code in self.input_pt_data[pt]:
+                full_pt_dict[pt][self.code_map[code]] = 1
 
         args = {'columns': self.code_universe, 'index': full_pt_dict.keys()}
 
