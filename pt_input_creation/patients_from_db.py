@@ -16,6 +16,8 @@ class PatientPopulation:
         self.pt_db = DatabaseHandle(**db_params)
 
     def get_rand(self, tbl, n=1000) -> List[List[int]]:
+        if n > POP_N:
+            raise ValueError(f'Maximum patient count of {POP_N}')
         tmp_ = list(range(POP_N))
         shuffle(tmp_)
         tmp_ = tmp_[0:n]
@@ -60,9 +62,13 @@ class PatientPopulation:
             ret_dict[subj_id] = [con[0] for con in cons if con[0] is not None]
         return ret_dict
 
-    def get_result(self, conc: ConceptType, target_concept: Tuple[str], inclusive=True) -> Dict[int, bool]:
+    def get_result(self, conc: ConceptType, target_concept: Tuple[str], inclusive=True, __print_ratio__=False) -> Dict[int, bool]:
         ret_dict = dict()
+        if __print_ratio__:
+            pos_count = 0
+            neg_count = 0
         for subj_id in self.pt_id_list:
+            neg_count += 1
             exec_str = f'''
                         SELECT {conc.get_field()}
                         FROM {conc.get_table()}
@@ -75,13 +81,22 @@ class PatientPopulation:
 
             if inclusive:
                 if len(cons) > 0:
+                    if __print_ratio__:
+                        neg_count -= 1
+                        pos_count += 1
                     ret_dict[subj_id]['final'] = 1
-                    print("here")
                     for code in cons:
                         ret_dict[subj_id]['meta'][code] = 1
             else:
                 if len(cons) == len(target_concept):
                     ret_dict[subj_id]['final'] = 1
+                    if __print_ratio__:
+                        pos_count += 1
+                elif __print_ratio__:
+                    neg_count -= 1
                 for code in cons:
                     ret_dict[subj_id]['meta'][code] = 1
+        if __print_ratio__:
+            print(
+                f'There were {pos_count} patients with the target and {neg_count} without.')
         return ret_dict

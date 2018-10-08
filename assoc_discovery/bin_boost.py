@@ -25,8 +25,6 @@ class BinaryBoostModel:
         x_test = causal[~mask]
         y_train = [d for d, s in zip(result, mask) if s]
         y_test = [d for d, s in zip(result, mask) if not s]
-        print(len(x_train.index), len(list(x_train)), len(y_train))
-        print(y_train[0:10])
         self.train_booster(x_train, y_train)
         self.eval_model_acc(x_test, y_test)
 

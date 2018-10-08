@@ -36,12 +36,12 @@ class ProcessPtData:
         self.causal_src = src
         self.causal_data = self.patients.get_causal(src.get_type())
 
-    def get_result_data(self, src: Source, target=None):
+    def get_result_data(self, src: Source, target=None, __print__=False):
         if target is not None:
             self.target = target
         self.result_src = src
         self.result_data = self.patients.get_result(
-            src.get_type(), self.target)
+            src.get_type(), self.target, __print_ratio__=__print__)
 
     def gen_code_univ(self, __print__=True):
         ''' Create the universe of codes based on the current

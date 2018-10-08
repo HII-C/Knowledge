@@ -10,7 +10,9 @@ db_ = {'user': 'hiic', 'password': 'greenes2018',
 diabetes = tuple(['25000', '25001', '25002'])
 
 total_start = datetime.now()
-processor = ProcessPtData(db_, 500, diabetes)
+processor = ProcessPtData(db_, 20000, diabetes)
+print(f'Fetching {processor.pt_count} patients.')
+
 start = datetime.now()
 processor.get_causal_data(Source('D_LABITEMS'))
 end = datetime.now()
@@ -18,12 +20,11 @@ print('Fetching Input Data took ', end - start)
 
 start = datetime.now()
 processor.gen_code_univ(__print__=False)
-print(list(processor.code_map.values())[0:10])
 end = datetime.now()
 print('Code generation took ', end - start)
 
 start = datetime.now()
-processor.get_result_data(Source('ICD9'), target=diabetes)
+processor.get_result_data(Source('ICD9'), __print__=True)
 end = datetime.now()
 print('Result retrieval took ', end - start)
 
@@ -32,10 +33,10 @@ inp = processor.matrix_creation()
 end = datetime.now()
 print('Matrix Creation took ', end - start)
 
-# start = datetime.now()
-# inp.occ_threshold(threshold=.15, __print__=True)
-# end = datetime.now()
-# print('Occurence Threshold Filtering took ', end - start)
+start = datetime.now()
+inp.occ_threshold(threshold=.20, __print__=True)
+end = datetime.now()
+print('Occurence Threshold Filtering took ', end - start)
 
 
 start = datetime.now()
