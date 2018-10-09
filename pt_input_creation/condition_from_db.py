@@ -74,11 +74,11 @@ class ConditionPopulation:
         return ret_dict
 
 
-    def main(self):
-        ConditionPopulation.get_rand(self, "DIAGNOSES_ICD", 10)
-
-        input_tuple: Tuple[str] = ("7100")
-        ConditionPopulation.get_result(self, ConceptType("Condition"), input_tuple, 10)
-
-cp = ConditionPopulation()
-if __name__ == "__main__": cp.main()
+#     def main(self):
+#         ConditionPopulation.get_rand(self, "DIAGNOSES_ICD", 10)
+#
+#         input_tuple: Tuple[str] = ("7100")
+#         ConditionPopulation.get_result(self, ConceptType("Condition"), input_tuple, 10)
+#
+# cp = ConditionPopulation()
+# if __name__ == "__main__": cp.main()
