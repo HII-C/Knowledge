@@ -61,7 +61,7 @@ class ConditionPopulation:
     def get_rand(self, tbl, n=1000) -> List[List[int]]:
         if n > POP_N:
             raise ValueError(f'Maximum patient count of {POP_N}')
-        tmp_ = list(range(POP_N))
+        tmp_ = list(range(1297, 1297 + POP_N))
         print(tmp_)
         shuffle(tmp_)
         print(tmp_)
@@ -69,12 +69,12 @@ class ConditionPopulation:
         exec_str = f'''
                         SELECT SUBJECT_ID 
                         FROM {tbl}
-                        WHERE rand_id IN {tuple(tmp_)}
+                        WHERE ROW_ID IN {tuple(tmp_)}
                         LIMIT {n}'''
-        # try:
-        #     self.cursor.execute(exec_str)
-        # except sql.Error as e:
-        #     print("Error %d: %s" % (e.args[0], e.args[1]))
+        #try:
+        self.cursor.execute(exec_str)
+        #except sql.Error as e:
+            #print("Error %d: %s" % (e.args[0], e.args[1]))
 
         self.cond_list = [row[0] for row in self.cursor.fetchall()]
         print(self.cond_list)
