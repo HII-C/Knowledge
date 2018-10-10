@@ -1,4 +1,4 @@
-from numpy.random import randint, shuffle
+from numpy.random import randint, shuffle, random_integers
 from typing import List, Dict, Tuple
 from collections import defaultdict
 from util.db_util import DatabaseHandle
@@ -16,6 +16,53 @@ class ConditionPopulation:
 
     def __init__(self, db_params):
         self.cond_db = DatabaseHandle(**db_params)
+
+    def gen_rand_subj_ids(self, conc: ConceptType, flag: bool) -> List[int]:
+        if(conc.get_int() != 1 and flag == True):
+            raise ValueError("Concept is not observation, and yet the flag is True")
+        elif(conc.get_int() == 1 and flag == True):
+            tbl = conc.get_table()
+            exec_str = f'''
+                            SELECT COUNT(*) 
+                            FROM {tbl}
+                            WHERE FLAG = 'Abnormal';
+                            '''
+            self.cursor.execute(exec_str)
+            num_rows = self.cursor.fetachall()
+            rows = random_integers(1, num_rows, POP_N)
+            subj_id_list = list
+            for x in rows:
+                exec_str = f'''
+                                SELECT SUBJECT_ID 
+                                FROM {tbl}
+                                LIMIT 1 OFFSET {x};
+                                '''
+                self.cursor.execute(exec_str)
+                subj_id_list.append(self.cursor.fetachall())
+
+
+            return subj_id_list
+
+        else:
+            tbl = conc.get_table()
+            exec_str = f'''
+                            SELECT COUNT(*) 
+                            FROM {tbl};
+                            '''
+            self.cursor.execute(exec_str)
+            num_rows = self.cursor.fetachall()
+            rows = random_integers(1,num_rows, POP_N)
+            subj_id_list = list
+            for x in rows:
+                exec_str = f'''
+                                            SELECT SUBJECT_ID 
+                                            FROM {tbl}
+                                            LIMIT 1 OFFSET {x};
+                                            '''
+                self.cursor.execute(exec_str)
+                subj_id_list.append(self.cursor.fetachall())
+
+            return subj_id_list
 
 
     def get_rand(self, tbl, n=1000) -> List[List[int]]:
