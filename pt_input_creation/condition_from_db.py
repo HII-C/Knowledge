@@ -1,4 +1,4 @@
-from numpy.random import randint, shuffle, random_integers
+from numpy.random import randint, shuffle
 from typing import List, Dict, Tuple
 from collections import defaultdict
 from util.db_util import DatabaseHandle
@@ -23,44 +23,37 @@ class ConditionPopulation:
         elif(conc.get_int() == 1 and flag == True):
             tbl = conc.get_table()
             exec_str = f'''
-                            SELECT COUNT(*) 
+                            SELECT SUBJECT_ID 
                             FROM {tbl}
                             WHERE FLAG = 'Abnormal';
                             '''
             self.cursor.execute(exec_str)
-            num_rows = self.cursor.fetachall()
-            rows = random_integers(1, num_rows, POP_N)
-            subj_id_list = list
-            for x in rows:
-                exec_str = f'''
-                                SELECT SUBJECT_ID 
-                                FROM {tbl}
-                                LIMIT 1 OFFSET {x};
-                                '''
-                self.cursor.execute(exec_str)
-                subj_id_list.append(self.cursor.fetachall())
+            data = self.cursor.fetachall()
+            num_row = len(data[0])
 
+            num_observations = randint(low=1,high=num_row)
+
+            rand_rows = randint(low=1, high=num_row, size = num_observations)
+
+            subj_id_list = data[rand_rows]
 
             return subj_id_list
 
         else:
             tbl = conc.get_table()
             exec_str = f'''
-                            SELECT COUNT(*) 
-                            FROM {tbl};
-                            '''
+                                        SELECT SUBJECT_ID 
+                                        FROM {tbl};
+                                        '''
             self.cursor.execute(exec_str)
-            num_rows = self.cursor.fetachall()
-            rows = random_integers(1,num_rows, POP_N)
-            subj_id_list = list
-            for x in rows:
-                exec_str = f'''
-                                            SELECT SUBJECT_ID 
-                                            FROM {tbl}
-                                            LIMIT 1 OFFSET {x};
-                                            '''
-                self.cursor.execute(exec_str)
-                subj_id_list.append(self.cursor.fetachall())
+            data = self.cursor.fetachall()
+            num_row = len(data[0])
+
+            num_observations = randint(low=1, high=num_row)
+
+            rand_rows = randint(low=1, high=num_row, size=num_observations)
+
+            subj_id_list = data[rand_rows]
 
             return subj_id_list
 
