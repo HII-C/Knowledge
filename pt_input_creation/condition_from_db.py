@@ -4,7 +4,7 @@ from collections import defaultdict
 from util.db_util import DatabaseHandle
 from util.concept_util import ConceptType
 #import pymysql.connections as connections
-#import pymysql as sql
+import MySQLdb as sql
 
 #POP_N = 651047 #651047 in the DIAGNOSES_ICD table
 POP_N = 20
@@ -17,43 +17,49 @@ class ConditionPopulation:
     def __init__(self, db_params):
         self.cond_db = DatabaseHandle(**db_params)
 
-    def gen_rand_subj_ids(self, conc: ConceptType, flag: bool) -> List[int]:
-        if(conc.get_int() != 1 and flag == True):
+
+    def gen_rand_subj_ids(self, conc: ConceptType = ConceptType('Condition'), flag: bool = False) -> List[int]:
+        if((conc.get_int() != 1) and (flag)):
             raise ValueError("Concept is not observation, and yet the flag is True")
-        elif(conc.get_int() == 1 and flag == True):
+        elif((conc.get_int() == 1) and (flag)):
             tbl = conc.get_table()
             exec_str = f'''
-                            SELECT SUBJECT_ID 
-                            FROM {tbl}
-                            WHERE FLAG = 'Abnormal';
-                            '''
+                            SELECT SUBJECT_ID FROM {tbl} 
+                            WHERE FLAG = ('ABNORMAL')'''
+            print(exec_str)
             self.cursor.execute(exec_str)
-            data = self.cursor.fetachall()
-            num_row = len(data[0])
+            subj_ids = self.cursor.fetchall()
+            num_row = len(subj_ids)
 
-            num_observations = randint(low=1,high=num_row)
+            num_returning = randint(low=0, high=num_row)
 
-            rand_rows = randint(low=1, high=num_row, size = num_observations)
+            rand_rows = (list(range(0, num_row)))
 
-            subj_id_list = data[rand_rows]
+            shuffle(rand_rows)
+
+            rand_rows = [rand_rows.pop() for x in range(0, num_returning)]
+
+            subj_id_list = [subj_ids[x] for x in rand_rows]
 
             return subj_id_list
 
         else:
             tbl = conc.get_table()
-            exec_str = f'''
-                                        SELECT SUBJECT_ID 
-                                        FROM {tbl};
-                                        '''
+            exec_str = f'''SELECT SUBJECT_ID FROM {tbl}'''
+            print(exec_str)
             self.cursor.execute(exec_str)
-            data = self.cursor.fetachall()
-            num_row = len(data[0])
+            subj_ids = self.cursor.fetchall()
+            num_row = len(subj_ids)
 
-            num_observations = randint(low=1, high=num_row)
+            num_returning = randint(low=0, high=num_row)
 
-            rand_rows = randint(low=1, high=num_row, size=num_observations)
+            rand_rows = (list(range(0,num_row)))
 
-            subj_id_list = data[rand_rows]
+            shuffle(rand_rows)
+
+            rand_rows = [rand_rows.pop() for x in range(0,num_returning)]
+
+            subj_id_list = [subj_ids[x] for x in rand_rows]
 
             return subj_id_list
 
