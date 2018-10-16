@@ -6,8 +6,9 @@ from util.concept_util import ConceptType
 #import pymysql.connections as connections
 import MySQLdb as sql
 
-#POP_N = 651047 #651047 in the DIAGNOSES_ICD table
+# POP_N = 651047 #651047 in the DIAGNOSES_ICD table
 POP_N = 20
+
 
 class ConditionPopulation:
     cond_db: DatabaseHandle = None
@@ -17,17 +18,17 @@ class ConditionPopulation:
     def __init__(self, db_params):
         self.cond_db = DatabaseHandle(**db_params)
 
-
     def gen_rand_subj_ids(self, conc: ConceptType = ConceptType('Condition'), flag: bool = False) -> List[int]:
         if((conc.get_int() != 1) and (flag)):
-            raise ValueError("Concept is not observation, and yet the flag is True")
+            raise ValueError(
+                "Concept is not observation, and yet the flag is True")
         elif((conc.get_int() == 1) and (flag)):
             tbl = conc.get_table()
             exec_str = f'''
                             SELECT SUBJECT_ID FROM {tbl} 
                             WHERE FLAG = ('ABNORMAL')'''
             print(exec_str)
-            self.cursor.execute(exec_str)
+            self.cond_db.cursor.execute(exec_str)
             subj_ids = self.cursor.fetchall()
             num_row = len(subj_ids)
 
@@ -53,16 +54,15 @@ class ConditionPopulation:
 
             num_returning = randint(low=0, high=num_row)
 
-            rand_rows = (list(range(0,num_row)))
+            rand_rows = (list(range(0, num_row)))
 
             shuffle(rand_rows)
 
-            rand_rows = [rand_rows.pop() for x in range(0,num_returning)]
+            rand_rows = [rand_rows.pop() for x in range(0, num_returning)]
 
             subj_id_list = [subj_ids[x] for x in rand_rows]
 
             return subj_id_list
-
 
     def get_rand(self, tbl, n=1000) -> List[List[int]]:
         if n > POP_N:
@@ -77,16 +77,15 @@ class ConditionPopulation:
                         FROM {tbl}
                         WHERE ROW_ID IN {tuple(tmp_)}
                         LIMIT {n}'''
-        #try:
+        # try:
         self.cursor.execute(exec_str)
-        #except sql.Error as e:
-            #print("Error %d: %s" % (e.args[0], e.args[1]))
+        # except sql.Error as e:
+        #print("Error %d: %s" % (e.args[0], e.args[1]))
 
         self.cond_list = [row[0] for row in self.cursor.fetchall()]
         print(self.cond_list)
 
         return self.cond_list
-
 
     def get_result(self, conc: ConceptType, target_concept: Tuple[str], n=1000) -> Dict[int, bool]:
         ret_dict = dict()
@@ -101,7 +100,7 @@ class ConditionPopulation:
                             FROM {conc.get_table()}
                             WHERE subj_id = {subj_id}
                             AND {conc.get_field()} in {target_concept}'''
-            #self.cond_list.cursor.execute(exec_str)
+            # self.cond_list.cursor.execute(exec_str)
             self.cursor.execute(exec_str)
             #cons = self.cond_db.cursor.fetchall()
             cons = self.cursor.fetchall()

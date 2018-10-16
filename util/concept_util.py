@@ -30,6 +30,10 @@ class ConceptType(Enum):
                       'Labs': 'ITEMID'}
         return field_dict[self.value]
 
+    def get_str(self) -> str:
+        str_dict = {'Labs': 'LABEL'}
+        return str_dict[self.value]
+
 
 class Source(Enum):
     '''Enumerated class for representing the various sources patient
