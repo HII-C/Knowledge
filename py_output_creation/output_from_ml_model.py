@@ -34,6 +34,7 @@ class ModelOutput:
 
             if tmp_f_im[0][0] < insert_data[2][0]:
                 exec = """ DROP TABLE model_output"""
+                self.cond_db.execute(exec)
 
                 # create new table with input data
                 exec = """ CREATE TABLE model_output (
