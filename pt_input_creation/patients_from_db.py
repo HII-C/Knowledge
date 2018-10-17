@@ -25,8 +25,7 @@ class PatientPopulation:
         exec_str = f'''
                         SELECT SUBJECT_ID
                         FROM {tbl}
-                        WHERE rand_id IN {tuple(tmp_)}
-                        LIMIT {n}'''
+                        WHERE rand_id IN {tuple(tmp_)}'''
         self.pt_db.cursor.execute(exec_str)
         self.pt_id_list = [row[0] for row in self.pt_db.cursor.fetchall()]
 

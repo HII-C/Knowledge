@@ -7,10 +7,11 @@ from assoc_discovery.bin_boost import BinaryBoostModel
 
 db_ = {'user': 'hiic', 'password': 'greenes2018',
        'db': 'mimic', 'host': 'db01.healthcreek.org'}
-diabetes = tuple(['25000', '25001', '25002'])
+#diabetes = tuple(['25000', '25001', '25002'])
+diabetes = tuple(['25000', '25001'])
 
 total_start = datetime.now()
-processor = ProcessPtData(db_, 20000, diabetes)
+processor = ProcessPtData(db_, 10000, diabetes)
 print(f'Fetching {processor.pt_count} patients.')
 
 start = datetime.now()
@@ -34,7 +35,7 @@ end = datetime.now()
 print('Matrix Creation took ', end - start)
 
 start = datetime.now()
-inp.occ_threshold(threshold=.20, __print__=True)
+# inp.occ_threshold(threshold=.10, __print__=True)
 end = datetime.now()
 print('Occurence Threshold Filtering took ', end - start)
 
@@ -46,5 +47,8 @@ end = datetime.now()
 print('Binary Logistic Boosting modeling took ', end - start)
 
 
+scores = assoc.concept_by_importance()
+assoc.stringify_scores(processor.patients.pt_db, scores,
+                       Source('D_LABITEMS'), cutoff=5)
 total_end = datetime.now()
 print('Total script took ', total_end - total_start)

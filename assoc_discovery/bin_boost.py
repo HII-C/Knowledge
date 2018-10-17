@@ -3,10 +3,14 @@ import xgboost as xgb
 from typing import Dict, List
 from numpy.random import rand
 from itertools import compress
+from operator import itemgetter
+import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
 from pt_input_creation.patient_matrix import PatientMatrix
 from util.xgb_param_util import XgbParam
+from util.concept_util import ConceptType, Source
+from util.db_util import DatabaseHandle
 
 
 class BinaryBoostModel:
@@ -39,3 +43,32 @@ class BinaryBoostModel:
         err_per = (sum(1 for i in range(len(preds)) if int(
             preds[i] > 0.5) != labels[i]) / float(len(preds)))
         print(f'Error={err_per}')
+
+    def concept_by_importance(self):
+        scores = self.model.get_score()
+        scores__ = sorted(scores.items(), key=itemgetter(1), reverse=True)
+        with open('tmp.txt', 'w+') as handle:
+            for key in scores__:
+                handle.write(f'{key[0]}: {key[1]}\n')
+        return scores
+
+    def stringify_scores(self, db_handle: DatabaseHandle, scores: Dict, src: Source, cutoff=10):
+        conc = ConceptType(src.get_type())
+        ret_dict = dict()
+        for code in scores:
+            if scores[code] > cutoff:
+                exec_str = f'''
+                            SELECT {conc.get_str()}
+                            FROM D_LABITEMS
+                            WHERE {conc.get_field()} = {code}'''
+                db_handle.cursor.execute(exec_str)
+                ret_dict[db_handle.cursor.fetchall()[0][0]] = scores[code]
+        scores__ = sorted(ret_dict.items(), key=itemgetter(1), reverse=True)
+        with open('scores.txt', 'w+') as handle:
+            if len(scores__) >= 15:
+                len__ = 15
+            else:
+                len__ = len(scores__)
+            for key in scores__[0:len__]:
+                handle.write(f'{key[0]}: {key[1]}\n')
+        return ret_dict
