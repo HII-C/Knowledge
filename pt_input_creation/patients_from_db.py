@@ -68,11 +68,15 @@ class PatientPopulation:
             neg_count = 0
         for subj_id in self.pt_id_list:
             neg_count += 1
+            if len(target_concept) == 1:
+                f_str = f'= \'{target_concept[0]}\''
+            else:
+                f_str = f'IN {target_concept}'
             exec_str = f'''
                         SELECT {conc.get_field()}
                         FROM {conc.get_table()}
                         WHERE SUBJECT_ID = {subj_id} 
-                        AND {conc.get_field()} IN {target_concept}'''
+                        AND {conc.get_field()} {f_str}'''
             self.pt_db.cursor.execute(exec_str)
             cons = self.pt_db.cursor.fetchall()
             ret_dict[subj_id] = {'meta': {

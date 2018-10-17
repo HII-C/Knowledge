@@ -1,4 +1,5 @@
 import pandas as pd
+import json
 import xgboost as xgb
 from typing import Dict, List
 from numpy.random import rand
@@ -20,6 +21,18 @@ class BinaryBoostModel:
 
     def __init__(self):
         pass
+
+    def write_params(self, filename):
+        tmp = vars(self.xbg_param)
+        smpl = dict()
+        for key, value in tmp.items():
+            print(key, value, type(key), type(value))
+            if isinstance(value, pd.Series):
+                value.to_dict()
+            smpl[key] = value
+
+        with open(filename, 'w+') as handle:
+            json.dump(smpl, handle)
 
     def boost(self, causal: pd.DataFrame, result: List[int], ratio=.5):
         # x1, x2, y1, y2 = train_test_split(
@@ -52,7 +65,7 @@ class BinaryBoostModel:
                 handle.write(f'{key[0]}: {key[1]}\n')
         return scores
 
-    def stringify_scores(self, db_handle: DatabaseHandle, scores: Dict, src: Source, cutoff=10):
+    def stringify_scores(self, db_handle: DatabaseHandle, scores: Dict, src: Source, cutoff=10, fname='scores'):
         conc = ConceptType(src.get_type())
         ret_dict = dict()
         for code in scores:
@@ -64,11 +77,10 @@ class BinaryBoostModel:
                 db_handle.cursor.execute(exec_str)
                 ret_dict[db_handle.cursor.fetchall()[0][0]] = scores[code]
         scores__ = sorted(ret_dict.items(), key=itemgetter(1), reverse=True)
-        with open('scores.txt', 'w+') as handle:
-            if len(scores__) >= 15:
-                len__ = 15
-            else:
-                len__ = len(scores__)
-            for key in scores__[0:len__]:
-                handle.write(f'{key[0]}: {key[1]}\n')
+        if len(scores__) >= 15:
+            len__ = 15
+        else:
+            len__ = len(scores__)
+        with open(f'{fname}.json', 'w+') as handle:
+            json.dump(scores__[0:len__], handle)
         return ret_dict
