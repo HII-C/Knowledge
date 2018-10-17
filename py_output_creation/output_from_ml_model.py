@@ -40,17 +40,23 @@ class ModelOutput:
                                     concept1 VARCHAR(20), concept2 VARCHAR(20), f_importance DOUBLE)
                                 """
                 self.cond_db.execute(exec)
+                ordered_list: list[Tuple] = [row for row in insert_data]
+                ordered_list = ordered_list.sort(key=lambda tup: tup[2])
 
-                exec = f""" INSERT INTO model_output (concept1, concept2, f_importance) VALUES
-                                ({insert_data[0][0]}, {insert_data[1][0]}, {insert_data[2][0]})"""
-                self.cond_db.execute(exec)
+                for row in ordered_list:
+                    exec = f""" INSERT INTO model_output (concept1, concept2, f_importance) VALUES
+                                                ({row[0]}, {row[1]}, {row[2]})"""
+                    self.cond_db.execute(exec)
         else:
             #create new table with input data
             exec = """ CREATE TABLE model_output (
                     concept1 VARCHAR(20), concept2 VARCHAR(20), f_importance DOUBLE)
                 """
             self.cond_db.execute(exec)
+            ordered_list: list[Tuple] = [row for row in  insert_data]
+            ordered_list = ordered_list.sort(key = lambda tup: tup[2])
 
-            exec = f""" INSERT INTO model_output (concept1, concept2, f_importance) VALUES
-                ({insert_data[0][0]}, {insert_data[1][0]}, {insert_data[2][0]})"""
-            self.cond_db.execute(exec)
+            for row in ordered_list:
+                exec = f""" INSERT INTO model_output (concept1, concept2, f_importance) VALUES
+                                ({row[0]}, {row[1]}, {row[2]})"""
+                self.cond_db.execute(exec)
