@@ -16,7 +16,7 @@ class ModelOutput:
         #order it by accuracy
 
    # def row_to_tuple(self): ????
-    def ordered_insert(self, insert_data: Tuple[Tuple[str, str, int]]):
+    def ordered_insert(self, insert_data: Tuple[Tuple[str, str, int],...]):
         #if no table named model output, need to make a new table called model output
         exec = """
                 SHOW TABLES """
@@ -48,7 +48,7 @@ class ModelOutput:
                     exec = f""" INSERT INTO model_output (concept1, concept2, f_importance) VALUES
                                 ({row[0]}, {row[1]}, {row[2]})"""
                     self.cond_db.cursor.execute(exec)
-                self.cond_db.cursor.execute(exec)
+                    self.cond_db.connection.commit()
         else:
             #create new table with input data
             exec = """ CREATE TABLE model_output (
@@ -61,3 +61,4 @@ class ModelOutput:
                 exec = f""" INSERT INTO model_output (concept1, concept2, f_importance) VALUES
                 ({row[0]}, {row[1]}, {row[2]})"""
                 self.cond_db.cursor.execute(exec)
+                self.cond_db.connection.commit()
