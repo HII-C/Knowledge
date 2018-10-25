@@ -25,7 +25,7 @@ class PredicateData:
                     AS (
                         SELECT (subj, obj, occr, `avg`)
                         FROM predicate_scores 
-                        WHERE pred = "{pred}"
+                        WHERE pred = \"{pred}\"
                         )
                     '''
             self.pt_db.cursor.execute(query)
