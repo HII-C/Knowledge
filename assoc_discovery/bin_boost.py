@@ -64,23 +64,3 @@ class BinaryBoostModel:
             for key in scores__:
                 handle.write(f'{key[0]}: {key[1]}\n')
         return scores
-
-    def stringify_scores(self, db_handle: DatabaseHandle, scores: Dict, src: Source, cutoff=10, fname='scores'):
-        conc = ConceptType(src.get_type())
-        ret_dict = dict()
-        for code in scores:
-            if scores[code] > cutoff:
-                exec_str = f'''
-                            SELECT {conc.get_str()}
-                            FROM D_LABITEMS
-                            WHERE {conc.get_field()} = {code}'''
-                db_handle.cursor.execute(exec_str)
-                ret_dict[db_handle.cursor.fetchall()[0][0]] = scores[code]
-        scores__ = sorted(ret_dict.items(), key=itemgetter(1), reverse=True)
-        if len(scores__) >= 15:
-            len__ = 15
-        else:
-            len__ = len(scores__)
-        with open(f'{fname}.json', 'w+') as handle:
-            json.dump(scores__[0:len__], handle)
-        return ret_dict

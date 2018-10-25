@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from util.concept_util import Source
+from util.concept_util import Source, OutputFormat
 from pt_input_creation.process_patients import ProcessPtData
 from pt_input_creation.patient_matrix import PatientMatrix
 from assoc_discovery.bin_boost import BinaryBoostModel
@@ -48,8 +48,8 @@ print('Binary Logistic Boosting modeling took ', end - start)
 
 
 scores = assoc.concept_by_importance()
-assoc.stringify_scores(processor.patients.pt_db, scores,
-                       Source('D_LABITEMS'), cutoff=10)
+OutputFormat.stringify_scores(processor.patients.pt_db, scores,
+                              Source('D_LABITEMS'), cutoff=10)
 assoc.write_params('params.json')
 total_end = datetime.now()
 print('Total script took ', total_end - total_start)
