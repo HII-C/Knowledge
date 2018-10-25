@@ -11,11 +11,12 @@ class PredicateData:
     def build_tables(self, preds: List[str]):
         query = f'''
                 CREATE TABLE predicate_scores
-                AS (select predicate, (subject as concept1), (object as concept2), (count(score) as occ), (avg(score) as avg_score)
-                FROM language_data
-                WHERE pred IN {tuple(preds)}")
-                GROUP BY predicate, subject, object
-            );'''
+                AS (
+                    SELECT (predicate, (subject as concept1), (object as concept2), (count(score) as occ), (avg(score) as avg_score))
+                    FROM language_data
+                    WHERE pred IN {tuple(preds)}
+                    GROUP BY (predicate, subject, object)
+                )'''
         self.pt_db.cursor.execute(query)
         self.pt_db.connection.commit()
         for pred in preds:
