@@ -29,7 +29,7 @@ class ConditionPopulation:
                             WHERE FLAG = ('ABNORMAL')'''
             print(exec_str)
             self.cond_db.cursor.execute(exec_str)
-            subj_ids = self.cursor.fetchall()
+            subj_ids = self.cond_db.cursor.fetchall()
             num_row = len(subj_ids)
 
             num_returning = randint(low=0, high=num_row)
@@ -48,8 +48,8 @@ class ConditionPopulation:
             tbl = conc.get_table()
             exec_str = f'''SELECT SUBJECT_ID FROM {tbl}'''
             print(exec_str)
-            self.cursor.execute(exec_str)
-            subj_ids = self.cursor.fetchall()
+            self.cond_db.cursor.execute(exec_str)
+            subj_ids = self.cond_db.cursor.fetchall()
             num_row = len(subj_ids)
 
             num_returning = randint(low=0, high=num_row)
@@ -78,11 +78,11 @@ class ConditionPopulation:
                         WHERE ROW_ID IN {tuple(tmp_)}
                         LIMIT {n}'''
         # try:
-        self.cursor.execute(exec_str)
+        self.cond_db.cursor.execute(exec_str)
         # except sql.Error as e:
         #print("Error %d: %s" % (e.args[0], e.args[1]))
 
-        self.cond_list = [row[0] for row in self.cursor.fetchall()]
+        self.cond_list = [row[0] for row in self.cond_db.cursor.fetchall()]
         print(self.cond_list)
 
         return self.cond_list
@@ -101,9 +101,9 @@ class ConditionPopulation:
                             WHERE subj_id = {subj_id}
                             AND {conc.get_field()} in {target_concept}'''
             # self.cond_list.cursor.execute(exec_str)
-            self.cursor.execute(exec_str)
+            self.cond_db.cursor.execute(exec_str)
             #cons = self.cond_db.cursor.fetchall()
-            cons = self.cursor.fetchall()
+            cons = self.cond_db.cursor.fetchall()
 
             print(cons)
             if len(cons) > 0:
