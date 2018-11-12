@@ -49,33 +49,33 @@ class MappingToUMLS:
 
         if(loinc_spot != 0 and icd9_spot != 0 and snomed_spot != 0):
             select_str = f'''DISTINCT CUI, RXCUI, t{loinc_spot}.LOINC_CODE, t{icd9_spot}.ICD9_CODE, t{snomed_spot}.SNOMED_CODE'''
-            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), t{loinc_spot}.LOINC_CODE VARCHAR(200), t{icd9_spot}.ICD9_CODE VARCHAR(200), t{snomed_spot}.SNOMED_CODE VARCHAR(200))'''
+            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), t{loinc_spot}.LOINC_CODE as LOINC_CODE, t{icd9_spot}.ICD9_CODE as ICD9_CODE, t{snomed_spot}.SNOMED_CODE as SNOMED_CDOE)'''
 
         elif(loinc_spot != 0 and icd9_spot != 0):
             select_str = f'''DISTINCT CUI, RXCUI, t{loinc_spot}.LOINC_CODE, t{icd9_spot}.ICD9_CODE'''
-            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), t{loinc_spot}.LOINC_CODE VARCHAR(200), t{icd9_spot}.ICD9_CODE VARCHAR(200), SNOMED_CODE VARCHAR(200))'''
+            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), t{loinc_spot}.LOINC_CODE as LOINC_CODE, t{icd9_spot}.ICD9_CODE as ICD9_CODE, SNOMED_CODE VARCHAR(200))'''
 
         elif(loinc_spot != 0 and snomed_spot != 0):
             select_str = f'''DISTINCT CUI, RXCUI, t{loinc_spot}.LOINC_CODE, t{icd9_spot}.ICD9_CODE'''
-            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), t{loinc_spot}.LOINC_CODE VARCHAR(200), ICD9_CODE VARCHAR(200), t{snomed_spot}.SNOMED_CODE VARCHAR(200))'''
+            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), t{loinc_spot}.LOINC_CODE as LOINC_CODE, ICD9_CODE VARCHAR(200), t{snomed_spot}.SNOMED_CODE as SNOMED_CODE)'''
 
         elif(snomed_spot != 0 and icd9_spot != 0):
             select_str = f'''DISTINCT CUI, RXCUI, t{snomed_spot}.SNOMED_CODE, t{icd9_spot}.ICD9_CODE'''
-            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), LOINC_CODE VARCHAR(200), t{icd9_spot}.ICD9_CODE VARCHAR(200), t{snomed_spot}.SNOMED_CODE VARCHAR(200))'''
+            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), LOINC_CODE VARCHAR(200), t{icd9_spot}.ICD9_CODE as ICD9_CODE, t{snomed_spot}.SNOMED_CODE as SNOMED_CODE)'''
 
 
         elif(loinc_spot != 0):
             select_str = f'''DISTINCT CUI, RXCUI, t{icd9_spot}.ICD9_CODE'''
-            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), t{loinc_spot}.LOINC_CODE VARCHAR(200), ICD9_CODE VARCHAR(200), SNOMED_CODE VARCHAR(200))'''
+            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), t{loinc_spot}.LOINC_CODE as LOINC_CODE, ICD9_CODE VARCHAR(200), SNOMED_CODE VARCHAR(200))'''
 
 
         elif(icd9_spot != 0):
             select_str = f'''DISTINCT CUI, RXCUI, t{loinc_spot}.LOINC_CODE'''
-            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), LOINC_CODE VARCHAR(200), t{icd9_spot}.ICD9_CODE VARCHAR(200), SNOMED_CODE VARCHAR(200))'''
+            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), LOINC_CODE VARCHAR(200), t{icd9_spot}.ICD9_CODE as ICD9_CODE, SNOMED_CODE VARCHAR(200))'''
 
         elif(snomed_spot != 0):
             select_str = f'''DISTINCT CUI, RXCUI, t{snomed_spot}.SNOMED_CODE'''
-            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), LOINC_CODE VARCHAR(200), ICD9_CODE VARCHAR(200), t{snomed_spot}.SNOMED_CODE VARCHAR(200))'''
+            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), LOINC_CODE VARCHAR(200), ICD9_CODE VARCHAR(200), t{snomed_spot}.SNOMED_CODE as SNOMED_CODE)'''
 
         else:
             select_str = f'''DISTINCT CUI, RCUI'''
@@ -90,32 +90,22 @@ class MappingToUMLS:
                left join rxnorm.RXNCONSO as t2 on t1.STR = t2.STR 
                {mimic_exec_str};
                '''
-        
+
 
         print(exec)
         self.cond_db.cursor.execute(exec)
         self.cond_db.connection.commit()
 
-
-        # if(len(rename_str) > 0):
-        #     exec = f'''
-        #         ALTER TABLE {datab}.{table}
-        #         {rename_str}
-        #         '''
-        #     print(exec)
-        #     self.cond_db.cursor.execute(exec)
-        #     self.cond_db.connection.commit()
-
         return
 
 
 
-    def main(self):
-
-        self.create_table(self, 'derived', 'tableu')
-
-param = {'user': 'root', 'password': 'star2222',
-         'host': 'localhost', 'db': 'derived'}
-
-cp = MappingToUMLS(param);
-if __name__ == "__main__": cp.main()
+#     def main(self):
+# 
+#         self.create_table(self, 'derived', 'tableu')
+#
+# param = {'user': 'root', 'password': ,
+#          'host': 'localhost', 'db': 'derived'}
+#
+# cp = MappingToUMLS(param);
+# if __name__ == "__main__": cp.main()
