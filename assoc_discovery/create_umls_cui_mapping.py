@@ -20,16 +20,19 @@ class CreateUMLSCUIMapping:
     #      self.cursor = self.connection.cursor()
     #      print("connected")
 
-    def create_temp_loinc(self, output_table, n=10000, output_db='derived'):
+    def create_labevents_UMLS(self, output_table, n=10000, output_db='derived'):
+        output_table = "labevents_UMLS"
 
         exec_str = f'''
-                    CREATE TABLE {output_db}.{output_table}(LOINC_CODE VARCHAR(255))
-                    AS SELECT mimic.D_LABITEMS.LOINC_CODE
+                    CREATE TABLE {output_db}.{output_table}(CUI CHAR(8), ROW_ID INT, SUBJECT_ID INT, HADM_ID INT, CHARTTIME DATETIME, VALUE TEXT, VALUENUM FLOAT, VALUEUOM VARCHAR(255), FLAG VARCHAR(255))
+                    AS SELECT mimic.ItemIdToCUI.CUI as CUI, mimic.LABEVENTS.ROW_ID as ROW_ID, 
+                    mimic.LABEVENTS.SUBJECT_ID as SUBJECT_ID, mimic.LABEVENTS.HADM_ID as HADM_ID, mimic.LABEVENTS.CHARTTIME as CHARTTIME, 
+                    mimic.LABEVENTS.VALUE as VALUE, mimic.LABEVENTS.VALUENUM as VALUENUM, mimic.LABEVENTS.VALUEUOM as VALUEUOM, mimic.LABEVENTS.FLAG as FLAG
                     FROM mimic.LABEVENTS INNER JOIN
-                    mimic.D_LABITEMS on mimic.LABEVENTS.ITEMID = mimic.D_LABITEMS.ITEMID limit {n}'''
+                    mimic.ItemIdToCUI on mimic.LABEVENTS.ITEMID = mimic.D_LABITEMS.ITEMID limit {n}'''
 
-        self.rel_db.cursor.execute(exec_str)
-        self.rel_db.connection.commit()
+        self.umls_db.cursor.execute(exec_str)
+        self.umls_db.connection.commit()
 
         # try:
         #     self.cursor.execute(exec_str)
@@ -38,13 +41,13 @@ class CreateUMLSCUIMapping:
 
         # self.connection.commit()
 
-    #def item_id_to_umls_cui(self):
+    #def create_diagnoses_UMLS(self):
 
 
     #def icd9_to_umls_cui(self):
 
 #     def main(self):
-#         CreateUMLSCUIMapping.get_occurences(self, output_table="output", n=10, semmed_db="semmed", output_db="derived")
+#         CreateUMLSCUIMapping.get_occurences(self, output_table="labevents_UMLS", n=10, output_db="derived")
 #
-# sr = SumRelation()
-# if __name__ == "__main__": sr.main()
+# ucm = CreateUMLSCUIMapping()
+# if __name__ == "__main__": ucm.main()
