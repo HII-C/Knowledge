@@ -18,8 +18,8 @@ class MappingToUMLS:
         query: List[List] = self.cond_db.cursor.fetchall()
         return query
 
-    #left outer join on CUI STRs
-    def create_table(self, db_params, datab: str, table: str, mimic_tables : List[Tuple[str,str,str]] = [('mimic.D_LABITEMS', 'LABEL', 'LOINC'),('mimic.D_ICD_PROCEDURES', 'SHORT_TITLE', 'ICD9'),('mimic.D_ICD_DIAGNOSES', 'SHORT_TITLE', 'ICD9')]):
+    #[('derived.d_items', 'LABEL', 'LOINC'),('derived.d_diag', 'SHORT_TITLE', 'ICD9'),('derived.d_proc', 'SHORT_TITLE', 'ICD9')] <- for debug
+    def create_table(self, db_params, datab: str, table: str, mimic_tables : List[Tuple[str,str,str]] = [('mimic.D_LABITEMS', 'LABEL', 'LOINC'),('mimic.D_ICD_DIAGNOSES', 'SHORT_TITLE', 'ICD9'),('mimic.D_ICD_PROCEDURES', 'SHORT_TITLE', 'ICD9')]):
 
         # drop the existing table
         exec = f'''
@@ -46,48 +46,39 @@ class MappingToUMLS:
             mimic_exec.append(temp_str)
 
         mimic_exec_str = ''.join(mimic_exec)
+        temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), LOINC_CODE VARCHAR(200), ICD9_CODE VARCHAR(200), SNOMED_CODE VARCHAR(200))'''
 
         if(loinc_spot != 0 and icd9_spot != 0 and snomed_spot != 0):
-            select_str = f'''DISTINCT CUI, RXCUI, t{loinc_spot}.LOINC_CODE, t{icd9_spot}.ICD9_CODE, t{snomed_spot}.SNOMED_CODE'''
-            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), t{loinc_spot}.LOINC_CODE as LOINC_CODE, t{icd9_spot}.ICD9_CODE as ICD9_CODE, t{snomed_spot}.SNOMED_CODE as SNOMED_CDOE)'''
+            select_str = f'''DISTINCT CUI, RXCUI, t{loinc_spot}.LOINC_CODE as LOINC_CODE, t{icd9_spot}.ICD9_CODE as ICD9_CODE, t{snomed_spot}.SNOMED_CODE as SNOMED_CODE'''
 
         elif(loinc_spot != 0 and icd9_spot != 0):
-            select_str = f'''DISTINCT CUI, RXCUI, t{loinc_spot}.LOINC_CODE, t{icd9_spot}.ICD9_CODE'''
-            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), t{loinc_spot}.LOINC_CODE as LOINC_CODE, t{icd9_spot}.ICD9_CODE as ICD9_CODE, SNOMED_CODE VARCHAR(200))'''
+            select_str = f'''DISTINCT CUI, RXCUI, t{loinc_spot}.LOINC_CODE as LOINC_CODE, t{icd9_spot}.ICD9_CODE as ICD9_CODE'''
 
         elif(loinc_spot != 0 and snomed_spot != 0):
-            select_str = f'''DISTINCT CUI, RXCUI, t{loinc_spot}.LOINC_CODE, t{icd9_spot}.ICD9_CODE'''
-            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), t{loinc_spot}.LOINC_CODE as LOINC_CODE, ICD9_CODE VARCHAR(200), t{snomed_spot}.SNOMED_CODE as SNOMED_CODE)'''
+            select_str = f'''DISTINCT CUI, RXCUI, t{loinc_spot}.LOINC_CODE as LOINC_CODE, t{icd9_spot}.ICD9_CODE as ICD9_CODE'''
 
         elif(snomed_spot != 0 and icd9_spot != 0):
-            select_str = f'''DISTINCT CUI, RXCUI, t{snomed_spot}.SNOMED_CODE, t{icd9_spot}.ICD9_CODE'''
-            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), LOINC_CODE VARCHAR(200), t{icd9_spot}.ICD9_CODE as ICD9_CODE, t{snomed_spot}.SNOMED_CODE as SNOMED_CODE)'''
-
+            select_str = f'''DISTINCT CUI, RXCUI, t{snomed_spot}.SNOMED_CODE as SNOMED_CODE, t{icd9_spot}.ICD9_CODE as ICD9_CODE'''
 
         elif(loinc_spot != 0):
-            select_str = f'''DISTINCT CUI, RXCUI, t{icd9_spot}.ICD9_CODE'''
-            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), t{loinc_spot}.LOINC_CODE as LOINC_CODE, ICD9_CODE VARCHAR(200), SNOMED_CODE VARCHAR(200))'''
-
+            select_str = f'''DISTINCT CUI, RXCUI, t{icd9_spot}.ICD9_CODE as ICD9_CODE'''
 
         elif(icd9_spot != 0):
-            select_str = f'''DISTINCT CUI, RXCUI, t{loinc_spot}.LOINC_CODE'''
-            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), LOINC_CODE VARCHAR(200), t{icd9_spot}.ICD9_CODE as ICD9_CODE, SNOMED_CODE VARCHAR(200))'''
+            select_str = f'''DISTINCT CUI, RXCUI, t{loinc_spot}.LOINC_CODE as LOINC_CODE'''
 
         elif(snomed_spot != 0):
-            select_str = f'''DISTINCT CUI, RXCUI, t{snomed_spot}.SNOMED_CODE'''
-            temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), LOINC_CODE VARCHAR(200), ICD9_CODE VARCHAR(200), t{snomed_spot}.SNOMED_CODE as SNOMED_CODE)'''
+            select_str = f'''DISTINCT CUI, RXCUI, t{snomed_spot}.SNOMED_CODE as SNOMED_CODE'''
 
         else:
             select_str = f'''DISTINCT CUI, RCUI'''
-            temp_col_names = '(CUI VARCHAR(200), RXCUI VARCHAR(200), LOINC_CODE VARCHAR(200), ICD9_CODE VARCHAR(200), SNOMED_CODE VARCHAR(200))'
 
         # create new table
         exec = f''' 
                CREATE TABLE {datab}.{table} {temp_col_names}
                AS SELECT
                {select_str}
-               from umls.MRCONSO as t1 
-               left join rxnorm.RXNCONSO as t2 on t1.STR = t2.STR 
+               from derived.mrcon as t1 
+               left join derived.rxncon as t2 on t1.STR = t2.STR 
                {mimic_exec_str};
                '''
 
@@ -100,12 +91,18 @@ class MappingToUMLS:
 
 
 
-#     def main(self):
-# 
-#         self.create_table(self, 'derived', 'tableu')
-#
-# param = {'user': 'root', 'password': ,
-#          'host': 'localhost', 'db': 'derived'}
+    def main(self):
+
+        self.create_table(self,  datab ='derived', table='tableu')
+
+# param = {'user': 'hiic', 'password': 'greenes2018',
+#          'host': 'db01.healthcreek.org', 'db': 'derived'}
 #
 # cp = MappingToUMLS(param);
 # if __name__ == "__main__": cp.main()
+
+param = {'user': 'root', 'password': 'star2222',
+         'host': 'localhost', 'db': 'derived'}
+
+cp = MappingToUMLS(param);
+if __name__ == "__main__": cp.main()
