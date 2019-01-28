@@ -20,16 +20,18 @@ class CreateUMLSCUIMapping:
     #      self.cursor = self.connection.cursor()
     #      print("connected")
 
-    def create_labevents_UMLS(self, output_table, n=10000, output_db='derived'):
-        output_table = "labevents_UMLS"
+    def create_labevents_UMLS(
+            self, output_table: str = 'labevents_UMLS', n: int =10000, output_db: str='derived',
+            mimic_db: str= 'mimic', input_table: str = 'LABEVENTS', mappings_table: str = 'ItemIdToCUI'):
 
         exec_str = f'''
-                    CREATE TABLE {output_db}.{output_table}(CUI CHAR(8), ROW_ID INT, SUBJECT_ID INT, HADM_ID INT, CHARTTIME DATETIME, VALUE TEXT, VALUENUM FLOAT, VALUEUOM VARCHAR(255), FLAG VARCHAR(255))
-                    AS SELECT mimic.ItemIdToCUI.CUI as CUI, mimic.LABEVENTS.ROW_ID as ROW_ID, 
-                    mimic.LABEVENTS.SUBJECT_ID as SUBJECT_ID, mimic.LABEVENTS.HADM_ID as HADM_ID, mimic.LABEVENTS.CHARTTIME as CHARTTIME, 
-                    mimic.LABEVENTS.VALUE as VALUE, mimic.LABEVENTS.VALUENUM as VALUENUM, mimic.LABEVENTS.VALUEUOM as VALUEUOM, mimic.LABEVENTS.FLAG as FLAG
-                    FROM mimic.LABEVENTS INNER JOIN
-                    mimic.ItemIdToCUI on mimic.LABEVENTS.ITEMID = mimic.D_LABITEMS.ITEMID limit {n}'''
+                    CREATE TABLE {output_db}.{output_table} AS 
+                    SELECT SUBJECT_ID, HADM_ID, CUI, FLAG
+                    FROM {mimic_db}.{input_table}
+                    LEFT JOIN SELECT * ITEMID, CUI FROM {mimic_db}.{mappings_table} 
+                    ON {mimic_db}.{input_table}.ITEMID = {mimic_db}.{mappings_table}.ITEMID limit {n}
+                    PRIMARY KEY (CUI)
+                    '''
 
         self.umls_db.cursor.execute(exec_str)
         self.umls_db.connection.commit()
