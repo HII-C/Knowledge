@@ -70,8 +70,10 @@ class CreateUMLSCUIMapping:
                     FROM mimic.LABEVENTS INNER JOIN
                     mimic.ItemIdToCUI ON mimic.LABEVENTS.ITEMID = mimic.ItemIdToCUI.ITEMID limit {n}'''
 
-#     def main(self):
-#         CreateUMLSCUIMapping.get_occurences(self, output_table="labevents_UMLS", n=10, output_db="derived")
-#
-# ucm = CreateUMLSCUIMapping()
-# if __name__ == "__main__": ucm.main()
+    def main(self):
+        self.create_labevents_UMLS()
+
+param = {'user': 'hiic', 'password': 'greenes2018',
+         'host': 'db01.healthcreek.org', 'db': 'derived'}
+ucm = CreateUMLSCUIMapping(param)
+if __name__ == "__main__": ucm.main()
