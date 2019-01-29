@@ -91,18 +91,9 @@ class MappingToUMLS:
 
 
 
-    def main(self):
-
-        self.create_table(self,  datab ='derived', table='tableu')
-
-# param = {'user': 'hiic', 'password': 'greenes2018',
-#          'host': 'db01.healthcreek.org', 'db': 'derived'}
+#     def main(self):
+#
+#         self.create_table(self,  datab ='derived', table='tableu')
 #
 # cp = MappingToUMLS(param);
 # if __name__ == "__main__": cp.main()
-
-param = {'user': 'root', 'password': 'star2222',
-         'host': 'localhost', 'db': 'derived'}
-
-cp = MappingToUMLS(param);
-if __name__ == "__main__": cp.main()
