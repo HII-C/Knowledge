@@ -100,11 +100,3 @@ class CreateUMLSCUIMapping:
                     mimic.LABEVENTS.VALUE as VALUE, mimic.LABEVENTS.VALUENUM as VALUENUM, mimic.LABEVENTS.VALUEUOM as VALUEUOM, mimic.LABEVENTS.FLAG as FLAG
                     FROM mimic.LABEVENTS INNER JOIN
                     mimic.ItemIdToCUI ON mimic.LABEVENTS.ITEMID = mimic.ItemIdToCUI.ITEMID limit {n}'''
-
-    def main(self):
-        self.create_labevents_UMLS()
-
-param = {'user': 'hiic', 'password': 'greenes2018',
-         'host': 'db01.healthcreek.org', 'db': 'derived'}
-ucm = CreateUMLSCUIMapping(param)
-if __name__ == "__main__": ucm.main()
