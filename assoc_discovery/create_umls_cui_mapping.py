@@ -30,6 +30,7 @@ class CreateUMLSCUIMapping:
                             '''
         self.umls_db.cursor.execute(drop_output_query)
         self.umls_db.connection.commit()
+        print(drop_output_query)
 
         #deletes the mapping table (if it exists)
         drop_mappings_query = f'''
@@ -37,6 +38,7 @@ class CreateUMLSCUIMapping:
                               '''
         self.umls_db.cursor.execute(drop_mappings_query)
         self.umls_db.connection.commit()
+        print(drop_mappings_query)
 
         #creates a new mapping table
         create_mappings_table = f'''
@@ -45,6 +47,7 @@ class CreateUMLSCUIMapping:
                                 '''
         self.umls_db.cursor.execute(create_mappings_table)
         self.umls_db.connection.commit()
+        print(create_mappings_table)
 
         #makes the ItemId the primary key
         alter_mappings_pk = f'''
@@ -53,6 +56,7 @@ class CreateUMLSCUIMapping:
                             '''
         self.umls_db.cursor.execute(alter_mappings_pk)
         self.umls_db.connection.commit()
+        print(alter_mappings_pk)
 
         #creates a new output table where ITEMID is replaced by the CUI encoding
         exec_str = f'''
@@ -65,6 +69,7 @@ class CreateUMLSCUIMapping:
 
         self.umls_db.cursor.execute(exec_str)
         self.umls_db.connection.commit()
+        print(exec_str)
 
         # try:
         #     self.cursor.execute(exec_str)
