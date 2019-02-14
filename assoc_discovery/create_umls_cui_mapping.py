@@ -78,8 +78,8 @@ class CreateUMLSCUIMapping:
 
         # self.connection.commit()
 
-    def create_labevents_UMLS_with_ITEMID(
-            self, output_table: str = 'labevents_UMLS_ITEMID', n: int =10000, output_db: str='derived',
+    def create_labevents_UMLS_all(
+            self, output_table: str = 'labevents_UMLS', output_db: str='derived',
             mimic_db: str= 'mimic', input_table: str = 'LABEVENTS', mappings_table: str = 'ItemIdToCUI'):
 
         #deletes the output table (if it exists)
@@ -119,10 +119,10 @@ class CreateUMLSCUIMapping:
         #creates a new output table where ITEMID is replaced by the CUI encoding
         exec_str = f'''
                     CREATE TABLE {output_db}.{output_table} AS 
-                    SELECT SUBJECT_ID, HADM_ID, CUI, {mimic_db}.{input_table}.ITEMID, FLAG
+                    SELECT SUBJECT_ID, HADM_ID, CUI, FLAG
                     FROM {mimic_db}.{input_table}
-                    LEFT JOIN {output_db}.{mappings_table}
-                    ON {mimic_db}.{input_table}.ITEMID = {output_db}.{mappings_table}.ITEMID limit {n}
+                    INNER JOIN {output_db}.{mappings_table}
+                    ON {mimic_db}.{input_table}.ITEMID = {output_db}.{mappings_table}.ITEMID
                     '''
 
         self.umls_db.cursor.execute(exec_str)
