@@ -119,7 +119,7 @@ class CreateUMLSCUIMapping:
         #creates a new output table where ITEMID is replaced by the CUI encoding
         exec_str = f'''
                     CREATE TABLE {output_db}.{output_table} AS 
-                    SELECT SUBJECT_ID, HADM_ID, CUI, ITEMID, FLAG
+                    SELECT SUBJECT_ID, HADM_ID, CUI, {mappings_table}.ITEMID, FLAG
                     FROM {mimic_db}.{input_table}
                     LEFT JOIN {output_db}.{mappings_table}
                     ON {mimic_db}.{input_table}.ITEMID = {output_db}.{mappings_table}.ITEMID limit {n}
