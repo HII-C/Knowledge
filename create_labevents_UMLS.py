@@ -5,4 +5,4 @@ params = {'user': 'root', 'password': 'HealthCreekMySQLr00t',
 
 cucm = CreateUMLSCUIMapping(params)
 
-cucm.create_labevents_UMLS()
+cucm.create_labevents_UMLS_with_ITEMID()
