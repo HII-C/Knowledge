@@ -15,8 +15,8 @@ class ModelStorage:
         self.cond_db.connection.commit()
 
     def update_storage(
-            self, db_name: str = 'knowledge', storage_tbl: str = 'ModelStorage', storage_input:List[List] =
-            [['concA','concB','predC',3.1],['concB','concC','predD',4.5],['concC','concD','predE',5.6]]) -> None:
+            self, db_name: str = 'knowledge', storage_tbl: str = 'ModelStorage',
+            storage_input:List[Tuple[str,str,int,float]] = [['concA','concB',2,3.1]]) -> None:
         # check if the table exists in the first place
         tbl_query = f'''
                     SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{storage_tbl}' 
@@ -30,8 +30,11 @@ class ModelStorage:
         if num_target_tables == 0:
             # creating table
             create_table_query: str = f'''
-                                CREATE TABLE {db_name}.{storage_tbl} (Concept1 VARCHAR(9), Concept2 VARCHAR(9),
-                                Predicate tinyint unsigned , Coefficient FLOAT);
+                                CREATE TABLE {db_name}.{storage_tbl} (
+                                    Concept1 VARCHAR(9), Concept2 VARCHAR(9),
+                                    Predicate tinyint unsigned, Coefficient FLOAT, 
+                                    PRIMARY KEY(Concept1, Concept2, Predicate)
+                                 );
                                 '''
             self.cond_db.cursor.execute(create_table_query)
             self.cond_db.connection.commit()
@@ -52,12 +55,17 @@ class ModelStorage:
             self.cond_db.connection.commit()
 
         elif num_target_tables == 1:
-            # utilize keys 
-            for row in storage_input:
-                update_query: str = f'''
-                                UPDATE {db_name}.{storage_tbl}
-                                SET Coefficient = {row[3]}
-                                WHERE Concept1 = '{row[0]}'
-                                AND Concept2 = '{row[1]}'
-                                AND Predicate = '{row[2]}'
-                                '''
+
+            # creating strings for the values to be inputed
+            str_values: str = str(storage_input)[1:-1]
+            str_values = str_values.replace('[', '\n(').replace(']', ')')[1:]
+
+            # inserting via REPLACE
+            insert_query: str = f'''
+                        REPLACE INTO {db_name}.{storage_tbl}
+                        Values
+                        {str_values}
+                        '''
+
+            self.cond_db.cursor.execute(insert_query)
+            self.cond_db.connection.commit()
