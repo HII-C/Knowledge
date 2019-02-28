@@ -34,7 +34,7 @@ class ModelStorage:
                                     Concept1 VARCHAR(9), Concept2 VARCHAR(9),
                                     Predicate tinyint unsigned, Coefficient FLOAT, 
                                     PRIMARY KEY(Concept1, Concept2, Predicate)
-                                 );
+                                 )
                                 '''
             self.cond_db.cursor.execute(create_table_query)
             self.cond_db.connection.commit()
