@@ -16,4 +16,4 @@ my_storage_input = [['testA', 'testB', 2, 6.2],
                     ['testA2', 'testC2', 2, 3.9],
                     ['testB2', 'testA2', 2, 1.2],
                     ['testB2', 'testC2', 2, 0.2]]
-example.update_storage(my_storage_input = my_storage_input)
+example.update_storage(storage_input=my_storage_input)

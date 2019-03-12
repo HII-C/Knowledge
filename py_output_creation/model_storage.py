@@ -16,7 +16,7 @@ class ModelStorage:
 
     def update_storage(
             self, db_name: str = 'knowledge', storage_tbl: str = 'ModelStorage',
-            storage_input:List[Tuple[str,str,int,float]] = [['concA','concB',2,3.2]]) -> None:
+            storage_input: List[Tuple[str, str, int, float], ...] = [['concA','concB',2,3.2]]) -> None:
         # check if the table exists in the first place
         tbl_query = f'''
                     SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{storage_tbl}' 
