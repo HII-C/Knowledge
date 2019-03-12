@@ -24,6 +24,7 @@ class ModelStorage:
                     '''
         self.cond_db.cursor.execute(tbl_query)
         target_tables: Tuple[Tuple[str]] = self.cond_db.cursor.fetchall()
+        print(tbl_query)
         num_target_tables: int = len(target_tables)
 
         # if the number of tables is 0 then a table must be created
@@ -38,6 +39,7 @@ class ModelStorage:
                                 '''
             self.cond_db.cursor.execute(create_table_query)
             self.cond_db.connection.commit()
+            print(create_table_query)
 
             # creating strings for the values to be inputed
             str_values: str = str(storage_input)[1:-1]
@@ -53,6 +55,7 @@ class ModelStorage:
 
             self.cond_db.cursor.execute(insert_query)
             self.cond_db.connection.commit()
+            print(insert_query)
 
         elif num_target_tables == 1:
 
@@ -69,3 +72,4 @@ class ModelStorage:
 
             self.cond_db.cursor.execute(insert_query)
             self.cond_db.connection.commit()
+            print(insert_query)
