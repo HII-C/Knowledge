@@ -34,6 +34,10 @@ class ConceptType(Enum):
                       'Labs': 'ITEMID'}
         return field_dict[self.value]
 
+    def get_value(self) -> T:
+        # Return the fieldname for types with a continious val
+        pass
+
     def get_str(self) -> str:
         str_dict = {'Labs': 'LABEL'}
         return str_dict[self.value]

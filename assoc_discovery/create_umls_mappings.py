@@ -36,8 +36,9 @@ class MappingToUMLS:
         icd9_spot = 0
         snomed_spot = 0
         for x in range(0, len(mimic_tables)):
-            temp_str = f'''LEFT JOIN {mimic_tables[x][0]} AS t{int(x+3)} ON t1.STR = t{int(x+3)}.{mimic_tables[x][1]}
-             '''
+            temp_str = f''' LEFT JOIN {mimic_tables[x][0]} AS t{int(x+3)} 
+                                ON 
+                            t1.STR = t{int(x+3)}.{mimic_tables[x][1]} '''
             if(mimic_tables[x][2] == 'SNOMED' and snomed_spot == 0):
                 snomed_spot = x+3
             if(mimic_tables[x][2] == 'LOINC' and loinc_spot == 0):
@@ -99,11 +100,3 @@ class MappingToUMLS:
         self.cond_db.connection.commit()
 
         return
-
-
-#     def main(self):
-#
-#         self.create_table(self,  datab ='derived', table='tableu')
-#
-# cp = MappingToUMLS(param);
-# if __name__ == "__main__": cp.main()

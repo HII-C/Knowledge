@@ -1,8 +1,10 @@
+from typing import List, Dict, Tuple
 import MySQLdb as sql
 import MySQLdb.connections as connections
-
 from getpass import getpass
 from dataclasses import dataclass
+
+from util.concept_util import ConceptType
 
 
 class DatabaseHandle:
@@ -19,3 +21,41 @@ class DatabaseHandle:
         self.user = user
         self.host = host
         self.db = db
+
+    def subj_lhs_bin(self, subj_id: List[int],
+                     concept: ConceptType) -> List[int]:
+        exec_str = f''' SELECT (
+                            SUBJECT_ID, 
+                            {concept.get_field()})
+                        FROM 
+                            {concept.get_table()}
+                        WHERE SUBJECT_ID 
+                            IN 
+                        {tuple(subj_id)}'''
+        self.cursor.execute(exec_str)
+        return self.cursor.fetchall()
+
+    def subj_lhs_cont(self, subj_id: List[int],
+                      concept: ConceptType) -> List[int]:
+        exec_str = f''' SELECT (
+                            SUBJECT_ID, 
+                            {concept.get_field()},
+                            {concept.get_value()})
+                        FROM 
+                            {concept.get_table()}
+                        WHERE SUBJECT_ID 
+                            IN 
+                        {tuple(subj_id)}'''
+        self.cursor.execute(exec_str)
+        return self.cursor.fetchall()
+
+    def subj_rhs_single(self, subj_id: List[int],
+                        concept: ConceptType,
+                        target: str):
+        exec_str = f''' SELECT {concept.get_field()} 
+                            FROM {concept.get_table()}
+                        WHERE SUBJECT_ID IN {subj_id}
+                            AND 
+                        {concept.get_field()} = {target}'''
+        self.cursor.execute(exec_str)
+        return self.cursor.fetchall()
