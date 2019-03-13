@@ -2,9 +2,9 @@ from getpass import getpass
 from assoc_discovery.create_umls_cui_mapping import CreateUMLSCUIMapping
 
 user = 'root'
-password = getpass()
+password = getpass(f'Password for {user}')
 
-params = {'user': 'root', 'password': password,
+params = {'user': user, 'password': password,
           'db': 'derived', 'host': 'db01.healthcreek.org'}
 
 mapping_creation = CreateUMLSCUIMapping(params)

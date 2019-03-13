@@ -11,8 +11,7 @@ class MappingToUMLS:
 
     def get_code_and_str(self, db_params, tbl: str, encoding: str, str_col: str) -> List[List]:
         self.cond_db = DatabaseHandle(**db_params)
-        exec_str = f'''
-                    SELECT {encoding}, {str_col}  FROM {tbl}'''
+        exec_str = f''' SELECT {encoding}, {str_col} FROM {tbl}'''
         self.cond_db.cursor.execute(exec_str)
         query: List[List] = self.cond_db.cursor.fetchall()
         return query
@@ -37,7 +36,7 @@ class MappingToUMLS:
         icd9_spot = 0
         snomed_spot = 0
         for x in range(0, len(mimic_tables)):
-            temp_str = f'''left join {mimic_tables[x][0]} as t{int(x+3)} on t1.STR = t{int(x+3)}.{mimic_tables[x][1]}
+            temp_str = f'''LEFT JOIN {mimic_tables[x][0]} AS t{int(x+3)} ON t1.STR = t{int(x+3)}.{mimic_tables[x][1]}
              '''
             if(mimic_tables[x][2] == 'SNOMED' and snomed_spot == 0):
                 snomed_spot = x+3
@@ -49,7 +48,11 @@ class MappingToUMLS:
             mimic_exec.append(temp_str)
 
         mimic_exec_str = ''.join(mimic_exec)
-        temp_col_names = f'''(CUI VARCHAR(200), RXCUI VARCHAR(200), LOINC_CODE VARCHAR(200), ICD9_CODE VARCHAR(200), SNOMED_CODE VARCHAR(200))'''
+        temp_col_names = f'''(CUI VARCHAR(200),
+                                RXCUI VARCHAR(200),
+                                LOINC_CODE VARCHAR(200),
+                                ICD9_CODE VARCHAR(200),
+                                SNOMED_CODE VARCHAR(200))'''
 
         if(loinc_spot != 0 and icd9_spot != 0 and snomed_spot != 0):
             select_str = f'''DISTINCT CUI, RXCUI, t{loinc_spot}.LOINC_CODE as LOINC_CODE,
@@ -81,14 +84,15 @@ class MappingToUMLS:
             select_str = f'''DISTINCT CUI, RCUI'''
 
         # create new table
-        exec_str = f''' 
-                CREATE TABLE {datab}.{table} {temp_col_names}
-                    AS SELECT {select_str}
-                from derived.mrcon as t1 
-                    left join derived.rxncon as
-                        t2 on t1.STR = t2.STR 
-                {mimic_exec_str};
-               '''
+        exec_str = f''' CREATE TABLE {datab}.{table} 
+                            {temp_col_names}
+                        AS SELECT 
+                            {select_str}
+                        FROM derived.mrcon AS t1 
+                            LEFT JOIN derived.rxncon AS t2 
+                                ON 
+                            t1.STR = t2.STR 
+                        {mimic_exec_str}'''
 
         print(exec_str)
         self.cond_db.cursor.execute(exec_str)

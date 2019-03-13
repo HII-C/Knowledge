@@ -50,9 +50,12 @@ class Source(Enum):
 
     def get_type(self) -> ConceptType:
         type_dict = {
-            'ICD9': ConceptType.CND, 'SNOMED': ConceptType.CND,
-            'LOINC': ConceptType.OBS, 'D_LABITEMS': ConceptType.OBSIID,
-            'RxNorm': ConceptType.TRT}
+            'ICD9': ConceptType.CND,
+            'SNOMED': ConceptType.CND,
+            'LOINC': ConceptType.OBS,
+            'D_LABITEMS': ConceptType.OBSIID,
+            'RxNorm': ConceptType.TRT
+        }
         return type_dict[self.value]
 
 
@@ -67,17 +70,20 @@ class OutputFormat:
         ret_dict = dict()
         for code in scores:
             if scores[code] > cutoff:
-                exec_str = f'''
-                            SELECT {conc.get_str()}
-                            FROM D_LABITEMS
-                            WHERE {conc.get_field()} = {code}'''
+                exec_str = f'''SELECT {conc.get_str()}
+                                    FROM D_LABITEMS
+                                WHERE 
+                                    {conc.get_field()} = {code}'''
                 self.db_handle.cursor.execute(exec_str)
                 ret_dict[self.db_handle.cursor.fetchall()[0][0]] = scores[code]
-        scores__ = sorted(ret_dict.items(), key=itemgetter(1), reverse=True)
-        if len(scores__) >= 15:
-            len__ = 15
+        sorted_score = sorted(ret_dict.items(),
+                              key=itemgetter(1),
+                              reverse=True)
+        if len(sorted_score) >= 15:
+            length = 15
         else:
-            len__ = len(scores__)
+            length = len(sorted_score)
+
         with open(f'{fname}.json', 'w+') as handle:
-            json.dump(scores__[0:len__], handle)
+            json.dump(sorted_score[0:length], handle)
         return ret_dict
