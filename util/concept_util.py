@@ -3,7 +3,7 @@ from enum import Enum
 from operator import itemgetter
 from typing import List, T, Dict
 
-from db_util import DatabaseHandle
+from util.db_util import DatabaseHandle
 
 
 class ConceptType(Enum):
@@ -57,11 +57,12 @@ class Source(Enum):
 
 
 class OutputFormat:
+    db_handle: DatabaseHandle = None
 
-    def __init__(self):
-        pass
+    def __init__(self, db_handle):
+        self.db_handle = db_handle
 
-    def stringify_scores(self, db_handle: DatabaseHandle, scores: Dict, src: Source, cutoff=10, fname='scores'):
+    def stringify_scores(self, scores: Dict, src: Source, cutoff=10, fname='scores'):
         conc = ConceptType(src.get_type())
         ret_dict = dict()
         for code in scores:
@@ -70,8 +71,8 @@ class OutputFormat:
                             SELECT {conc.get_str()}
                             FROM D_LABITEMS
                             WHERE {conc.get_field()} = {code}'''
-                db_handle.cursor.execute(exec_str)
-                ret_dict[db_handle.cursor.fetchall()[0][0]] = scores[code]
+                self.db_handle.cursor.execute(exec_str)
+                ret_dict[self.db_handle.cursor.fetchall()[0][0]] = scores[code]
         scores__ = sorted(ret_dict.items(), key=itemgetter(1), reverse=True)
         if len(scores__) >= 15:
             len__ = 15

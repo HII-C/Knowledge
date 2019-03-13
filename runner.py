@@ -1,13 +1,15 @@
 from datetime import datetime
+from getpass import getpass
 
 from util.concept_util import Source, OutputFormat
 from pt_input_creation.process_patients import ProcessPtData
 from pt_input_creation.patient_matrix import PatientMatrix
 from assoc_discovery.bin_boost import BinaryBoostModel
 
-db_ = {'user': 'hiic', 'password': 'greenes2018',
+user = 'hiic'
+password = getpass(f'Password for {user}')
+db_ = {'user': user, 'password': password,
        'db': 'mimic', 'host': 'db01.healthcreek.org'}
-#diabetes = tuple(['25000', '25001', '25002'])
 diabetes = tuple(['25000'])
 
 total_start = datetime.now()
@@ -48,8 +50,8 @@ print('Binary Logistic Boosting modeling took ', end - start)
 
 
 scores = assoc.concept_by_importance()
-OutputFormat.stringify_scores(processor.patients.pt_db, scores,
-                              Source('D_LABITEMS'), cutoff=10)
+out = OutputFormat(db_handle=processor.patients.pt_db)
+out.stringify_scores(scores=scores, src=Source('D_LABITEMS'), cutoff=10)
 assoc.write_params('params.json')
 total_end = datetime.now()
 print('Total script took ', total_end - total_start)

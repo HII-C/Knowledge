@@ -1,6 +1,10 @@
+from getpass import getpass
 from py_output_creation.model_storage import ModelStorage
 
-params = {'user': 'root', 'password': 'HealthCreekMySQLr00t',
+user = 'root'
+password = getpass(f'Password for {user}')
+
+params = {'user': user, 'password': password,
           'db': 'derived', 'host': 'db01.healthcreek.org'}
 
 example = ModelStorage(params)

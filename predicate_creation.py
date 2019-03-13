@@ -1,6 +1,11 @@
+from getpass import getpass
+
 from assoc_discovery.process_predicates import PredicateData
 
-params = {'user': 'root', 'password': 'HealthCreekMySQLr00t',
+user = 'root'
+password = getpass(f'Password for {user}')
+
+params = {'user': user, 'password': password,
           'db': 'derived', 'host': 'db01.healthcreek.org'}
 
 example = PredicateData(params)
