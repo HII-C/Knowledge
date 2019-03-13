@@ -22,8 +22,8 @@ class DatabaseHandle:
         self.host = host
         self.db = db
 
-    def subj_lhs_bin(self, subj_id: List[int],
-                     concept: ConceptType) -> List[int]:
+    def lhs_bin(self, subj_id: List[int],
+                concept: ConceptType) -> List[int]:
         exec_str = f''' SELECT (
                             SUBJECT_ID, 
                             {concept.get_field()})
@@ -35,8 +35,8 @@ class DatabaseHandle:
         self.cursor.execute(exec_str)
         return self.cursor.fetchall()
 
-    def subj_lhs_cont(self, subj_id: List[int],
-                      concept: ConceptType) -> List[int]:
+    def lhs_cont(self, subj_id: List[int],
+                 concept: ConceptType) -> List[int]:
         exec_str = f''' SELECT (
                             SUBJECT_ID, 
                             {concept.get_field()},
@@ -49,13 +49,18 @@ class DatabaseHandle:
         self.cursor.execute(exec_str)
         return self.cursor.fetchall()
 
-    def subj_rhs_single(self, subj_id: List[int],
-                        concept: ConceptType,
-                        target: str):
-        exec_str = f''' SELECT {concept.get_field()} 
-                            FROM {concept.get_table()}
-                        WHERE SUBJECT_ID IN {subj_id}
-                            AND 
-                        {concept.get_field()} = {target}'''
+    def rhs_bin(self, subj_id: List[int],
+                concept: ConceptType,
+                target: str):
+        exec_str = f''' SELECT 
+                            (SUBJECT_ID)
+                        FROM 
+                            {concept.get_table()}
+                        WHERE 
+                            SUBJECT_ID 
+                        IN 
+                            {tuple(subj_id)}
+                        AND 
+                            {concept.get_field()} = {target}'''
         self.cursor.execute(exec_str)
         return self.cursor.fetchall()
