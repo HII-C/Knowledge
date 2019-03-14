@@ -4,12 +4,14 @@ from getpass import getpass
 import pandas as pd
 from warnings import warn
 
-from util.concept_util import ConceptType
-from util.db_util import DatabaseHandle
-from models.patient_population import PatientPopulation
+from models.util.concept_util import ConceptType
+from models.util.db_util import DatabaseHandle
+from models.core.patient_population import PatientPopulation
 
 
 class Config:
+    ''' Used to load the config file specified, and create some
+        of the required aspects of the Model in model.py'''
     params: Dict[T, T] = None
     database: DatabaseHandle = None
     patients: PatientPopulation = None
