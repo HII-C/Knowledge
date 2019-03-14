@@ -24,9 +24,12 @@ class Config:
         with open(filepath, 'r') as infile:
             self.params = json.load(infile)
         self.database_handle(self.params['database'])
+
+    def get_patients(self):
         self.patients = PatientPopulation(self.database,
                                           self.params['patient_count'])
         self.lefthand_side(self.params['lefthand_side'])
+        self.righthand_side(self.params['righthand_side'])
         self.lhs = self.patients.lhs
         self.rhs = self.patients.rhs
 
