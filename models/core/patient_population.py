@@ -4,8 +4,8 @@ import numpy as np
 from numpy.random import randint, shuffle
 import pandas as pd
 
-from util.concept_util import ConceptType
-from util.db_util import DatabaseHandle
+from models.util.concept_util import ConceptType
+from models.util.db_util import DatabaseHandle
 
 
 class PatientPopulation:
@@ -38,7 +38,7 @@ class PatientPopulation:
 
     def form_lhs_bin(self, concept: ConceptType):
         raw_lhs = self.database.lhs_bin(self.subject_id, concept)
-        # concepts_by_side = {subject_id: [list of concepts]}
+        # concepts_by_sid = {subject_id: [list of concepts]}
         concept_by_sid = defaultdict(list)
         concepts = list()
         for row in raw_lhs:
@@ -63,10 +63,12 @@ class PatientPopulation:
             concept_by_sid[row[0]].append([row[1], row[2]])
             concepts.append(row[1])
         self.concept_universe = set(concepts)
-        self.lhs = pd.DataFrame(np.zeros(shape=(self.patient_count,
-                                                len(self.concept_universe)),
-                                         index=self.subject_id,
-                                         columns=self.concept_universe))
+        # Create a matrix of N x M with values NaN
+        self.lhs = pd.DataFrame(np.full(shape=(self.patient_count,
+                                               len(self.concept_universe)),
+                                        fill_value=np.nan),
+                                index=self.subject_id,
+                                columns=self.concept_universe)
         # iterate with value = (subject_id, [list of concepts])
         for value in list(concept_by_sid.items()):
             for code in value[1]:

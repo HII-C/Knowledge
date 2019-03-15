@@ -5,17 +5,22 @@ from sklearn.model_selection import train_test_split
 
 
 from models.core.config import Config
+from models.util.data_util import Dataset
 from models.core.patient_population import PatientPopulation
 
 
 class Model:
     config: Config = None
-    x: pd.DataFrame = None
-    y: pd.Series = None
+    data: Dataset = None
+    train: Dataset = None
+    test: Dataset = None
 
     def __init__(self, config_file):
         self.config = Config()
         self.config.load(config_file)
+        self.data = Dataset()
+        self.train = Dataset()
+        self.test = Dataset()
 
     def retrieve_patients(self):
         self.config.get_patients()
@@ -24,17 +29,22 @@ class Model:
                 RHS ConceptType = {self.config.params["righthand_side"]["concept"]},
                 Evaluation = {self.config.params["righthand_side"]["evaluation"]},
                 and Logic = {self.config.params["righthand_side"]["logic"]}''')
-        self.x = self.config.lhs
-        self.y = self.config.rhs
+        self.data.x = self.config.lhs
+        self.data.y = self.config.rhs
 
     def load_patients(self, pickle_base='models/data/patients/static'):
-        self.x = pd.DataFrame.from_pickle(f'{pickle_base}_x.pickle')
-        self.y = pd.Series.from_pickle(f'{pickle_base}_y.pickle')
+        self.data.x = pd.DataFrame.from_pickle(f'{pickle_base}_x.pickle')
+        self.data.y = pd.Series.from_pickle(f'{pickle_base}_y.pickle')
 
     def dump_patients(self, pickle_base='models/data/patients/static'):
-        self.x.to_pickle(f'{pickle_base}_x.pickle')
-        self.y.to_pickle(f'{pickle_base}_y.pickle')
+        self.data.x.to_pickle(f'{pickle_base}_x.pickle')
+        self.data.y.to_pickle(f'{pickle_base}_y.pickle')
 
     def split_patients(self, test_size=.5, random_state=42):
         x_train, x_test, y_train, y_test = train_test_split(
-            self.x, self.y, test_size=test_size, random_state=random_state)
+            self.data.x, self.data.y, test_size=test_size, random_state=random_state)
+
+        self.train.x = x_train
+        self.train.y = y_train
+        self.test.x = x_test
+        self.test.y = y_test
