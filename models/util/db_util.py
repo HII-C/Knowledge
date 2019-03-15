@@ -1,20 +1,20 @@
 from typing import List, Dict, Tuple
 from getpass import getpass
 import MySQLdb as sql
+import MySQLdb.connections as connections
 
 from models.util.concept_util import ConceptType
 
 
 class DatabaseHandle:
-    connection: sql.connections.Connection = None
-    cursor: sql.cursors.BaseCursor = None
+    connection = connections.Connection
+    cursor = connections.cursors.Cursor
     user: str = None
     host: str = None
     db: str = None
 
-    def __init__(self, params: Dict[str, str] = None,
-                 handle: DatabaseHandle = None):
-        if isinstance(handle, DatabaseHandle):
+    def __init__(self, params: Dict[str, str] = None, handle=None):
+        if isinstance(handle, self):
             self = handle
 
         if isinstance(params, dict):
