@@ -14,17 +14,36 @@ class DatabaseHandle:
 
     def __init__(self, params: Dict[str, str] = None,
                  handle: DatabaseHandle = None):
-        if handle is not None:
+        if isinstance(handle, DatabaseHandle):
             self = handle
 
-        if params is not None:
-            self.connection = sql.connect(user=params['user'],
-                                          password=params['password'],
-                                          db=params['db'], host=params['host'])
-            self.cursor = self.connection.cursor()
-            self.user = params['user']
-            self.host = params['host']
-            self.db = params['db']
+        if isinstance(params, dict):
+            try:
+                self.connection = sql.connect(user=params['user'],
+                                              password=params['password'],
+                                              db=params['db'], host=params['host'])
+                self.cursor = self.connection.cursor()
+                self.user = params['user']
+                self.host = params['host']
+                self.db = params['db']
+            except sql._exceptions.DatabaseError:
+                # Creating the database that didn't exist, if that was the error above
+                connection: sql.connections.Connection
+                connection = sql.connect(user=params['user'],
+                                         password=params['password'],
+                                         db='mysql', host=params['host'])
+                cursor = connection.cursor()
+                cursor.execute(f'CREATE DATABASE {params["db"]}')
+                cursor.commit()
+                cursor.close()
+                connection.close()
+                self.connection = sql.connect(user=params['user'],
+                                              password=params['password'],
+                                              db=params['db'], host=params['host'])
+                self.cursor = self.connection.cursor()
+                self.user = params['user']
+                self.host = params['host']
+                self.db = params['db']
 
     def lhs_bin(self, subj_id: List[int],
                 concept: ConceptType) -> List[int]:
