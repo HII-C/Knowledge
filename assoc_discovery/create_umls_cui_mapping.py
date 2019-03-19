@@ -118,6 +118,60 @@ class CreateUMLSCUIMapping:
         if printout:
             print(exec_str)
 
+    def create_labevents_UMLS_NUM_VALS(self,
+                                  output_table: str = 'labevents_UMLS_w_VALNUM',
+                                  output_db: str = 'derived',
+                                  mimic_db: str = 'mimic',
+                                  input_table: str = 'LABEVENTS',
+                                  mappings_table: str = 'ItemIdToCUI',
+                                  printout=False):
+
+        drop_output_query = f'''DROP TABLE IF EXISTS {output_db}.{output_table} '''
+        self.umls_db.cursor.execute(drop_output_query)
+        self.umls_db.connection.commit()
+        if printout:
+            print(drop_output_query)
+
+        # deletes the mapping table (if it exists)
+        drop_mappings_query = f''' DROP TABLE IF EXISTS {output_db}.{mappings_table} '''
+        self.umls_db.cursor.execute(drop_mappings_query)
+        self.umls_db.connection.commit()
+        if printout:
+            print(drop_mappings_query)
+
+        # creates a new mapping table
+        create_mappings_table = f'''CREATE TABLE {output_db}.{mappings_table} 
+                                    AS SELECT 
+                                        DISTINCT ITEMID, CUI 
+                                    FROM {mimic_db}.{mappings_table}'''
+        self.umls_db.cursor.execute(create_mappings_table)
+        self.umls_db.connection.commit()
+        if printout:
+            print(create_mappings_table)
+
+        # makes the ItemId the primary key
+        alter_mappings_pk = f'''ALTER TABLE {output_db}.{mappings_table}
+                                    ADD PRIMARY KEY 
+                                (ITEMID)
+                            '''
+        self.umls_db.cursor.execute(alter_mappings_pk)
+        self.umls_db.connection.commit()
+        print(alter_mappings_pk)
+
+        # creates a new output table where ITEMID is replaced by the CUI encoding
+        exec_str = f''' CREATE TABLE {output_db}.{output_table} 
+                        AS SELECT
+                            SUBJECT_ID, HADM_ID, CUI, FLAG, VALUENUM
+                        FROM {mimic_db}.{input_table}
+                            INNER JOIN {output_db}.{mappings_table}
+                                ON 
+                            {mimic_db}.{input_table}.ITEMID = {output_db}.{mappings_table}.ITEMID '''
+
+        self.umls_db.cursor.execute(exec_str)
+        self.umls_db.connection.commit()
+        if printout:
+            print(exec_str)
+
     def diagnoses_ICD_to_CUI(self, output_table, n=10000, output_db='derived'):
         temp_table = "ICDTOCUI"
 
