@@ -1,5 +1,6 @@
 from typing import List, Dict, Tuple
-from util.db_util import DatabaseHandle
+from models.util.db_util import DatabaseHandle
+
 
 class ModelStorage:
     cond_db: DatabaseHandle = None

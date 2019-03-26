@@ -7,7 +7,7 @@ from pt_input_creation.patient_matrix import PatientMatrix
 from assoc_discovery.bin_boost import BinaryBoostModel
 
 user = 'hiic'
-password = getpass(f'Password for {user}')
+password = getpass(f'Password for {user}: ')
 db_ = {'user': user, 'password': password,
        'db': 'mimic', 'host': 'db01.healthcreek.org'}
 diabetes = tuple(['25000'])

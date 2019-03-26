@@ -3,7 +3,7 @@ from getpass import getpass
 from assoc_discovery.process_predicates import PredicateData
 
 user = 'root'
-password = getpass(f'Password for {user}')
+password = getpass(f'Password for {user}: ')
 
 params = {'user': user, 'password': password,
           'db': 'derived', 'host': 'db01.healthcreek.org'}

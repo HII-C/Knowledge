@@ -2,7 +2,7 @@ from getpass import getpass
 from py_output_creation.model_storage import ModelStorage
 
 user = 'root'
-password = getpass(f'Password for {user}')
+password = getpass(f'Password for {user}: ')
 
 params = {'user': user, 'password': password,
           'db': 'derived', 'host': 'db01.healthcreek.org'}
