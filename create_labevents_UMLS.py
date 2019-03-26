@@ -9,4 +9,4 @@ params = {'user': user, 'password': password,
 
 mapping_creation = CreateUMLSCUIMapping(params)
 
-mapping_creation.create_labevents_UMLS_all()
+mapping_creation.create_labevents_UMLS_w_VALUENUM()
