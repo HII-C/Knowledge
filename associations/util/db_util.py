@@ -4,7 +4,7 @@ import MySQLdb.connections as connections
 from getpass import getpass
 from dataclasses import dataclass
 
-from util.concept_util import ConceptType
+from associations.util.concept_util import ConceptType
 
 
 class DatabaseHandle:
