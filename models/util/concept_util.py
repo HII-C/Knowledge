@@ -3,7 +3,7 @@ from enum import Enum
 from operator import itemgetter
 from typing import List, T, Dict
 
-from models.util.db_util import DatabaseHandle
+# from models.util.db_util import DatabaseHandle
 
 
 class ConceptType(Enum):
