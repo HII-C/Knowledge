@@ -142,7 +142,7 @@ class CreateUMLSCUIMapping:
         # creates a new mapping table
         create_mappings_table = f'''CREATE TABLE {output_db}.{mappings_table} 
                                     AS SELECT 
-                                        DISTINCT ITEMID, CUI, VALUENUM
+                                        DISTINCT ITEMID, CUI
                                     FROM {mimic_db}.{mappings_table}'''
         self.umls_db.cursor.execute(create_mappings_table)
         self.umls_db.connection.commit()
@@ -161,7 +161,7 @@ class CreateUMLSCUIMapping:
         # creates a new output table where ITEMID is replaced by the CUI encoding
         exec_str = f''' CREATE TABLE {output_db}.{output_table} 
                         AS SELECT
-                            SUBJECT_ID, HADM_ID, CUI, FLAG
+                            SUBJECT_ID, HADM_ID, CUI, FLAG, VALUENUM
                         FROM {mimic_db}.{input_table}
                             INNER JOIN {output_db}.{mappings_table}
                                 ON 
