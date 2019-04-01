@@ -2,9 +2,8 @@ from typing import Dict
 from operator import itemgetter
 import json
 
-from associations.util.db_util import DatabaseHandle
-from associations.util.concept_util import Source, ConceptType
-
+from models.util.db_util import DatabaseHandle
+from models.util.concept_util import Source, ConceptType
 
 class OutputFormat:
     db_handle: DatabaseHandle = None
