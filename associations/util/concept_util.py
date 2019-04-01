@@ -3,7 +3,8 @@ from enum import Enum
 from operator import itemgetter
 from typing import List, T, Dict
 
-from associations.util.db_util import DatabaseHandle
+import associations.util.db_util as db_util
+#from associations.util.db_util import DatabaseHandle
 
 
 class ConceptType(Enum):
@@ -64,7 +65,7 @@ class Source(Enum):
 
 
 class OutputFormat:
-    db_handle: DatabaseHandle = None
+    db_handle: db_util.DatabaseHandle = None
 
     def __init__(self, db_handle):
         self.db_handle = db_handle
