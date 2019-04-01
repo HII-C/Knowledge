@@ -4,8 +4,7 @@ import MySQLdb.connections as connections
 from getpass import getpass
 from dataclasses import dataclass
 
-import associations.util.concept_util as concept_util
-#from associations.util.concept_util import ConceptType
+from associations.util.concept_util import ConceptType
 
 class DatabaseHandle:
     connection: connections.Connection = None
@@ -23,7 +22,7 @@ class DatabaseHandle:
         self.db = db
 
     def lhs_bin(self, subj_id: List[int],
-                concept: concept_util.ConceptType) -> List[int]:
+                concept: ConceptType) -> List[int]:
         exec_str = f''' SELECT (
                             SUBJECT_ID, 
                             {concept.get_field()})
@@ -36,7 +35,7 @@ class DatabaseHandle:
         return self.cursor.fetchall()
 
     def lhs_cont(self, subj_id: List[int],
-                 concept: concept_util.ConceptType) -> List[int]:
+                 concept: ConceptType) -> List[int]:
         exec_str = f''' SELECT (
                             SUBJECT_ID, 
                             {concept.get_field()},
@@ -50,7 +49,7 @@ class DatabaseHandle:
         return self.cursor.fetchall()
 
     def rhs_bin(self, subj_id: List[int],
-                concept: concept_util.ConceptType,
+                concept: ConceptType,
                 target: str):
         exec_str = f''' SELECT 
                             (SUBJECT_ID)
