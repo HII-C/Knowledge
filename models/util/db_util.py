@@ -14,7 +14,7 @@ class DatabaseHandle:
     db: str = None
 
     def __init__(self, params: Dict[str, str] = None, handle=None):
-        if isinstance(handle, self):
+        if type(handle) is DatabaseHandle:
             self = handle
 
         if isinstance(params, dict):

@@ -6,7 +6,7 @@ class ModelStorage:
     cond_db: DatabaseHandle = None
 
     def __init__(self, db_params):
-        self.cond_db = DatabaseHandle(**db_params)
+        self.cond_db = DatabaseHandle(db_params)
 
     def create_database(self, db_name: str = 'knowledge') -> None:
         exec_str = f'''

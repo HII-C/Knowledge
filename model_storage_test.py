@@ -1,5 +1,5 @@
 from getpass import getpass
-from py_output_creation.model_storage import ModelStorage
+from models.output.storage import Storage
 
 user = 'root'
 password = getpass(f'Password for {user}: ')
@@ -7,7 +7,7 @@ password = getpass(f'Password for {user}: ')
 params = {'user': user, 'password': password,
           'db': 'derived', 'host': 'db01.healthcreek.org'}
 
-example = ModelStorage(params)
+example = Storage(params)
 my_storage_input = [['testA', 'testB', 2, 6.2],
                     ['testA', 'testC', 2, 3.9],
                     ['testB', 'testA', 2, 1.2],

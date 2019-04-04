@@ -7,7 +7,7 @@ class Storage:
 
     def __init__(self, db_params=None):
         if db_params is not None:
-            self.cond_db = DatabaseHandle(**db_params)
+            self.cond_db = DatabaseHandle(db_params)
         else:
             self.cond_db = None
 
@@ -20,7 +20,7 @@ class Storage:
 
     def update_storage(
             self, db_name: str = 'knowledge', storage_tbl: str = 'ModelStorage',
-            storage_input: List[Tuple[str, str, int, float], ...] = [['concA', 'concB', 2, 3.2]]) -> None:
+            storage_input: List[Tuple[str, str, int, float]] = [['concA', 'concB', 2, 3.2]]) -> None:
         # check if the table exists in the first place
         tbl_query = f'''
                     SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{storage_tbl}' 
