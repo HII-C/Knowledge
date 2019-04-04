@@ -27,9 +27,13 @@ class Config:
             self.params = json.load(infile)
         self.database_handle(self.params['database'])
 
-    def get_patients(self):
-        self.patients = PatientPopulation(self.database,
-                                          self.params['patient_count'])
+    def get_patients(self, population=None):
+        if population is not None:
+            self.patients = population(self.database,
+                                       self.params['patient_count'])
+        else:
+            self.patients = PatientPopulation(self.database,
+                                              self.params['patient_count'])
         self.lefthand_side(self.params['lefthand_side'])
         self.righthand_side(self.params['righthand_side'])
         self.lhs = self.patients.lhs
