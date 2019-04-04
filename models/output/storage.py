@@ -52,7 +52,7 @@ class Storage:
             # multi-insert query
             insert_query: str = f'''
                         INSERT INTO {db_name}.{storage_tbl}
-                        (Concept1, Concept2, Predicate, Coefficent)
+                        (Concept1, Concept2, Predicate, Coefficient)
                         Values
                         {str_values}
                         '''
