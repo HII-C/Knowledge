@@ -22,8 +22,8 @@ class Model:
         self.train = Dataset()
         self.test = Dataset()
 
-    def retrieve_patients(self):
-        self.config.get_patients()
+    def retrieve_patients(self, population=None):
+        self.config.get_patients(population)
         print(f'''Retrieved {self.config.patients.patient_count} patients
                 with LHS ConceptType = {self.config.params["lefthand_side"]["concept"]},
                 RHS ConceptType = {self.config.params["righthand_side"]["concept"]},
