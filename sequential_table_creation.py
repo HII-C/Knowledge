@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 class SequentialTableCreation:
-    def __init__(self, db_paramas):
+    def __init__(self, db_paramas = None):
         if db_params is None:
             db_params = {
                 'user': 'root',
@@ -15,11 +15,11 @@ class SequentialTableCreation:
                 'host': 'db01.healthcreek.org',
                 'password': getpass('SQL Password:')
             }
-        db = DatabaseHandle(db_params)
+        self.db = DatabaseHandle(db_params)
 
     def create_admissions(self):
-        ''' Create new admissions table with new SEQ_NUM property which
-            provides the order of the HADM_IDs for each SUBJECT_ID.'''
+        # Create new admissions table with new SEQ_NUM property which
+        # provides the order of the HADM_IDs for each SUBJECT_ID.
 
         query = f'''
             set @seq = 0;
@@ -48,13 +48,12 @@ class SequentialTableCreation:
         self.db.connection.commit()
     
     def create_concept(self, concept: ConceptType, table_name: str):
-        ''' Create new metadata to easily access sequential occurence of
-            events for any concept type in our database.'''
-
-        # Note: expressions for UMLS table info empty
+        # Create new metadata to easily access sequential occurence of
+        # events for any concept type in our database
+        
         query = f'''
             SELECT  *
-            INTO knowledge.{table_name}
+            INTO {table_name}
             FROM (
                 SELECT  admissions_seq.SUBJECT_ID,
                         admissions_seq.HADM_ID,

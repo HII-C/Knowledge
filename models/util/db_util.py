@@ -87,3 +87,40 @@ class DatabaseHandle:
                             {concept.get_field()} = {target}'''
         self.cursor.execute(exec_str)
         return self.cursor.fetchall()
+
+    def lhs_seq_bin(self, subj_id: List[int], concept: ConceptType, target: str):
+        exec_str = f'''
+            SELECT  SUBJECT_ID,
+                    UMLS_CODE,
+                    SEQ_NUM
+            FROM    {concept.get_table()}
+            WHERE   SUBJECT_ID IN {subj_id}
+                    AND UMLS_CODE NOT {target}
+        '''
+        self.cursor.execute(exec_str)
+        return self.cursor.fetchall()
+
+    def lhs_seq_cont(self, subj_id: List[int], concept: ConceptType, target: str):
+        exec_str = f'''
+            SELECT  SUBJECT_ID,
+                    UMLS_CODE,
+                    SEQ_NUM,
+                    VALUE
+            FROM    {concept.get_table()}
+            WHERE   SUBJECT_ID IN {subj_id}
+                    AND UMLS_CODE NOT {target}
+        '''
+        self.cursor.execute(exec_str)
+        return self.cursor.fetchall()
+
+    def rhs_seq_bin(self, subj_id: List[int], concept: ConceptType, target: str):
+        exec_str = f'''
+            SELECT  SUBJECT_ID,
+                    MAX(SEQ_NUM) AS MAX_SEQ
+            FROM    {concept.get_table()}
+            WHERE   SUBJECT_ID IN {subj_id}
+                    AND UMLS_CODE = {target}
+            GROUP BY SUBJECT_ID
+        '''
+        self.cursor.execute(exec_str)
+        return self.cursor.fetchall()
