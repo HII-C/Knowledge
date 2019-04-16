@@ -1,5 +1,5 @@
 from getpass import getpass
-from associations.create_umls_mappings import MappingToUMLS
+from associations.sum_relation_occurences import SumRelation
 
 user = 'root'
 password = getpass(f'Password for {user}: ')
@@ -7,6 +7,6 @@ password = getpass(f'Password for {user}: ')
 params = {'user': user, 'password': password,
           'db': 'derived', 'host': 'db01.healthcreek.org'}
 
-example = MappingToUMLS(**params)
+mapping_creation = SumRelation(params)
 
-example.create_table('derived', 'UMLS_mappings')
+mapping_creation.get_occurences(output_table='occurance_test')

@@ -1,5 +1,4 @@
-bin_boost.py
-------------
+
 
 create_umls_cui_mapping.py
 --------------------------
@@ -48,9 +47,6 @@ via the create_labevents_UMLS_all method
 
     * LABEVENTS description: https://mimic.physionet.org/mimictables/labevents/
 
-create_umls_mappings.py
-----------------------
-
 
 process_predicates.py
 --------------------
@@ -67,3 +63,8 @@ process_predicates.py
     * creates tables 'semmed_cleaing.<predicate>_by_pair' which is derived from 'semmed_cleaning.tmp_pred_scores'. These
     tables are the pairs of subjects and objects that occur for a specific predicate
     * PREDICATION and PREDICATION_AUX description: https://skr3.nlm.nih.gov/SemMedDB/dbinfo.html
+
+sum_relation_occurances.py
+--------------------
+* get_occurences:
+    * 
