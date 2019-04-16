@@ -1,6 +1,6 @@
 from getpass import getpass
 
-from assoc_discovery.process_predicates import PredicateData
+from associations.process_predicates import PredicateData
 
 user = 'root'
 password = getpass(f'Password for {user}: ')
