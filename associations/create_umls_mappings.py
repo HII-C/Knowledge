@@ -17,7 +17,7 @@ class MappingToUMLS:
         return query
 
     # [('derived.d_items', 'LABEL', 'LOINC'),('derived.d_diag', 'SHORT_TITLE', 'ICD9'),('derived.d_proc', 'SHORT_TITLE', 'ICD9')] <- for debug
-    def create_table(self, db_params, datab: str, table: str, mimic_tables:
+    def create_table(self, datab: str, table: str, n = 10000, mimic_tables:
                      List[Tuple[str, str, str]] = [
                          ('mimic.D_LABITEMS', 'LABEL', 'LOINC'),
                          ('mimic.D_ICD_DIAGNOSES', 'SHORT_TITLE', 'ICD9'),
@@ -93,7 +93,7 @@ class MappingToUMLS:
                             LEFT JOIN derived.rxncon AS t2 
                                 ON 
                             t1.STR = t2.STR 
-                        {mimic_exec_str}'''
+                        {mimic_exec_str} limit = {n}'''
 
         print(exec_str)
         self.cond_db.cursor.execute(exec_str)
