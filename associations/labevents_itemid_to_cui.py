@@ -28,7 +28,7 @@ class LabeventConversion:
                             {mimic_db}.{input_table}.ITEMID = {mimic_db}.{itemid_table}.ITEMID
                             LEFT JOIN {umls_db}.{umls_table}
                                 ON 
-                            {mimic_db}.{input_table}.LOINC_CODE = {umls_db}.{umls_table}.CODE 
+                            {mimic_db}.{itemid_table}.LOINC_CODE = {umls_db}.{umls_table}.CODE 
                         limit {n}
                     '''
         if printout:
