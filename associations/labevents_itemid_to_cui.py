@@ -21,7 +21,7 @@ class LabeventConversion:
         # creates a temp table where ITEMID is replaced by the CUI encoding
         temp_exec_str = f''' CREATE TEMPORARY TABLE {output_db}.temp
                         AS SELECT 
-                            SUBJECT_ID, HADM_ID, CHARTIME, VALUE, VALUENUM, VALUEUOM, FLAG, LOINC_CODE
+                            SUBJECT_ID, HADM_ID, CHARTTIME, VALUE, VALUENUM, VALUEUOM, FLAG, LOINC_CODE
                         FROM {mimic_db}.{input_table}
                             LEFT JOIN {mimic_db}.{itemid_table}
                                 ON 
