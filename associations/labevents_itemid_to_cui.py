@@ -21,7 +21,7 @@ class LabeventConversion:
 
         exec_str = f''' CREATE TABLE {output_db}.{output_table}
                         AS SELECT 
-                            ROW_ID, SUBJECT_ID, HADM_ID, CUI, CHARTTIME, VALUE, VALUENUM, VALUEUOM, FLAG
+                            {mimic_db}.{input_table}.ROW_ID, SUBJECT_ID, HADM_ID, CUI, CHARTTIME, VALUE, VALUENUM, VALUEUOM, FLAG
                         FROM {mimic_db}.{input_table}
                             LEFT JOIN {mimic_db}.{itemid_table}
                                 ON 
