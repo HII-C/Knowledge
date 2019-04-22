@@ -28,6 +28,7 @@ class LabeventConversion:
                             LEFT JOIN {umls_db}.{umls_table}
                                 ON 
                             {mimic_db}.{itemid_table}.LOINC_CODE = {umls_db}.{umls_table}.CODE 
+                        WHERE {mimic_db}.{input_table}.HADM_ID IS NOT NULL
                         limit {n}
                     '''
         if printout:
