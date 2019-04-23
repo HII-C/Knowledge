@@ -1,5 +1,5 @@
-from util.db_util import DatabaseHandle
-from util.concept_util import ConceptType
+from models.util.db_util import DatabaseHandle
+from models.util.concept_util import ConceptType
 
 from getpass import getpass
 
@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 class SequentialTableCreation:
-    def __init__(self, db_paramas = None):
+    def __init__(self, db_params = None):
         if db_params is None:
             db_params = {
                 'user': 'root',
@@ -22,26 +22,23 @@ class SequentialTableCreation:
         # provides the order of the HADM_IDs for each SUBJECT_ID.
 
         query = f'''
-            set @seq = 0;
-            set @subj = 0;
-
-            SELECT  SUBJECT_ID,
-                    HADM_ID,
-                    SEQ_NUM
-            INTO    admissions_seq
-            FROM (
-                SELECT  SUBJECT_ID,
-                        HADM_ID,
-                        @seq := IF(@subj = SUBJECT_ID, @seq+1, 0) AS SEQ_NUM,
-                        @subj := SUBJECT_ID
-                FROM (
-                    SELECT  SUBJECT_ID,
-                            HADM_ID,
-                            ADMITTIME
-                    FROM    mimic.ADMISSIONS
-                    ORDER BY SUBJECT_ID, ADMITTIME
-                ) AS ORDERED
-            ) AS SEQUENCED;
+            CREATE TABLE knowledge.admissions_seq
+            AS 
+                SELECT
+                    ADM1.SUBJECT_ID,
+                    ADM1.HADM_ID,
+                    ADM1.ADMITTIME,
+                    COUNT(*) - 1 AS `SEQ`
+                FROM mimic.ADMISSIONS AS ADM1
+                    LEFT JOIN mimic.ADMISSIONS AS ADM2
+                    ON ADM1.SUBJECT_ID = ADM2.SUBJECT_ID
+                    AND ADM1.ADMITTIME >= ADM2.ADMITTIME
+                GROUP BY
+                    ADM1.SUBJECT_ID,
+                    ADM1.HADM_ID
+                ORDER BY
+                    SUBJECT_ID,
+                    SEQ;            
         '''
 
         self.db.cursor.execute(query)
@@ -52,21 +49,16 @@ class SequentialTableCreation:
         # events for any concept type in our database
         
         query = f'''
-            SELECT  *
-            INTO {table_name}
-            FROM (
+            CREATE TABLE knowledge.{table_name}
+            AS
                 SELECT  admissions_seq.SUBJECT_ID,
                         admissions_seq.HADM_ID,
                         admissions_seq.SEQ_NUM,
-                        {concept.get_table()}.{concept.get_field()} AS ORIGIN_CODE,
-                        {}.{} AS UMLS_CODE,
+                        {concept.get_table()}.{concept.get_field()} AS {concept.get_field()}
                         {concept.get_table()}.{concept.get_value()} AS VALUE,
                 FROM {concept.get_table()}
                 LEFT JOIN admissions_seq
                 ON {concept.get_table()}.HADM_ID = admissions_seq.HADM_ID
-                LEFT JOIN {concept.get_table()}
-                ON {}.{} = {concept.get_table()}.{concept.get_field()}
-            ) AS TEMP;
         '''
 
         self.db.cursor.execute(query)
