@@ -9,4 +9,4 @@ params = {'user': user, 'password': password,
 
 mapping_creation = LabeventConversion(params)
 
-mapping_creation.create_labevents_UMLS()
+mapping_creation.create_labevents_UMLS_all()
