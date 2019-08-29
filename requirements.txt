@@ -1,5 +1,0 @@
-mysqlclient
-dataclasses
-numpy
-bidict
-pandas
