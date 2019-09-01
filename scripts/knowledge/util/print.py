@@ -5,13 +5,10 @@ import time
 
 from datetime import datetime
 
-class Printer:
-
+class PrintUtil:
     persist_str = ''
     persist_rows = 0
-
     # https://en.wikipedia.org/wiki/ANSI_escape_code
-
     FRMTS = {
         'bold': 1,
         'faint': 2,
@@ -20,11 +17,11 @@ class Printer:
         'strikethrough': 9
     }
 
-    @staticmethod
-    def table(tbl, brdr=False, align='r', pad=1):
+    @classmethod
+    def table(self, tbl, brdr=False, align='l', pad=1):
         if align in ('r', 'l'):
             align = [align] * len(tbl[0])
-        if isinstance(pad, int):
+        if type(pad) is int:
             pad = [pad] * len(tbl[0])
         tbl = [[str(cell) for cell in row] for row in tbl]
         widths = [max([len(cell) for cell in col]) 
@@ -34,20 +31,20 @@ class Printer:
             for cell, width, a, p in zip(row, widths, align, pad)]) 
             for row in tbl])
     
-    @staticmethod
-    def time(string):
+    @classmethod
+    def time(self, string):
         date = datetime.now()
         return ('[' + date.strftime('%H:%M:%S:') + 
             str(date.microsecond // 1000).zfill(3) +
             '] ' + string)
 
-    @staticmethod
-    def format(string, *frmts):
-        codes = tuple(Printer.FRMTS[frmt] for frmt in frmts if frmt in Printer.FRMTS)
+    @classmethod
+    def format(self, string, *frmts):
+        codes = tuple(self.FRMTS[frmt] for frmt in frmts if frmt in self.FRMTS)
         return ('\x1b[%sm'*len(codes) % codes) + string + '\x1b[0m'        
     
-    @staticmethod
-    def progress(string, prog):
+    @classmethod
+    def progress(self, string, prog):
         prog = min(1, max(0, prog))
         perc = 100 * prog
         return ( string + ' [' + 
@@ -55,55 +52,56 @@ class Printer:
                 '_' * int(20 - perc // 5) + 
                 '] ' + str(round(perc, 1)) + '%')
 
-    @staticmethod
-    def clear(rows=None):
+    @classmethod
+    def clear(self, rows=None):
         if rows is None:
             rows, cols = os.popen('stty size', 'r').read().split()
             rows = int(rows)
+            cols = int(cols)
         print('\n'*(rows-1) + '\033[F'*rows, end='\r')
 
-    @staticmethod
-    def delete(rows):
+    @classmethod
+    def delete(self, rows):
         pass
 
-    @staticmethod
-    def push():
-        persist = Printer.persist_str
-        Printer.print('', persist=True, replace=True)
-        Printer.print(persist)
+    @classmethod
+    def push(self):
+        persist = self.persist_str
+        self.print('', persist=True, replace=True)
+        self.print(persist)
 
-    @staticmethod
-    def printer(*args, **kwargs):
+    @classmethod
+    def printer(self, *args, **kwargs):
         def custom_print(string, *margs, **mkwarg):
-            Printer.print(string, *args, *margs, **kwargs, **mkwarg)
+            self.print(string, *args, *margs, **kwargs, **mkwarg)
         return custom_print
 
-    @staticmethod
-    def print(string, persist=False, replace=False, time=False, progress=None,
-            tbl=False, frmt=None):
+    @classmethod
+    def print(self, string='', persist=False, replace=False, time=False, 
+            progress=None, tbl=False, frmt=None):
         rows, cols = os.popen('stty size', 'r').read().split()
         rows = int(rows)
         cols = int(cols)
-        print(('\033[F'+' '*cols)*Printer.persist_rows, end='\r')
+        print(('\033[F'+' '*cols)*self.persist_rows, end='\r')
         if tbl:
-            string = Printer.table(string)
+            string = self.table(string)
         if time:
-            string = Printer.time(string)
+            string = self.time(string)
         if progress is not None:
-            string = Printer.progress(string, progress)
+            string = self.progress(string, progress)
         if frmt is not None:
-            if isinstance(frmt, list):
-                string = Printer.format(string, *frmt)
-            elif isinstance(frmt, str):
-                string = Printer.format(string, frmt)
+            if type(frmt) is list:
+                string = self.format(string, *frmt)
+            elif type(frmt) is str:
+                string = self.format(string, frmt)
         if persist:
-            if not replace and Printer.persist_rows:
-                Printer.persist_str += '\n' + string
+            if not replace and self.persist_rows:
+                self.persist_str += '\n' + string
             else:
-                Printer.persist_str = string
-            Printer.persist_rows = sum([math.ceil(len(row) / cols)
+                self.persist_str = string
+            self.persist_rows = sum([math.ceil(len(row) / cols)
                 for row in string.split('\n')])
         else:
             print(string)
-        if Printer.persist_rows:
-            print(Printer.persist_str)
+        if self.persist_rows:
+            print(self.persist_str)

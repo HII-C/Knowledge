@@ -6,36 +6,32 @@ import os
 from argparse import ArgumentParser
 from collections import defaultdict
 
-if __name__ == '__main__':
-    sys.path.insert(1, os.path.join(sys.path[0], '..'))
+from knowledge.util.print import PrintUtil as pr
 
-from util.print_util import Printer as pr
-
-class DropboxShell:
+class DropboxUtil:
     team = {}
     local_dir = '~'
     drop_dir = '/home/benjamin'
         
-    @staticmethod
-    def connect(key):
-        DropboxShell.dbx = dropbox.Dropbox(key)
+    @classmethod
+    def connect(self, key):
+        self.dbx = dropbox.Dropbox(key)
 
-    @staticmethod
-    def shell():
-        while DropboxShell.read_command():
+    @classmethod
+    def shell(self):
+        while self.read_command():
             pass
 
-    @staticmethod
-    def format_ls(data):
-        shell = DropboxShell
+    @classmethod
+    def format_ls(self, data):
         output = []
         for entry in data:
             output.append((
-                shell.decode_user(entry.sharing_info.modified_by) \
+                self.decode_user(entry.sharing_info.modified_by) \
                     if hasattr(entry.sharing_info, 'modified_by') else 'folder',
-                *shell.decode_size(entry.size \
+                *self.decode_size(entry.size \
                     if hasattr(entry, 'size') else 4096),
-                shell.decode_time(entry.server_modified) \
+                self.decode_time(entry.server_modified) \
                     if hasattr(entry, 'server_modified') else '',
                 entry.name))
         align = ['l', 'r', 'l', 'r', 'l']
@@ -46,8 +42,8 @@ class DropboxShell:
     def format_lls(data):
         pass
 
-    @staticmethod
-    def decode_dir(dir1, dir2):
+    @classmethod
+    def decode_dir(self, dir1, dir2):
         str1 = dir1.split('/')
         str2 = dir2.split('/')
         if str2[0] == '':
@@ -61,22 +57,21 @@ class DropboxShell:
             str1.pop(-1)
         return '/'.join(str1 + str2)
 
-    @staticmethod
-    def decode_user(user):
-        shell = DropboxShell
-        if not hasattr(shell.team, user):
-            shell.team[user] = shell.dbx.users_get_account(user).name.given_name
-        return shell.team[user]
+    @classmethod
+    def decode_user(self, user):
+        if not hasattr(self.team, user):
+            self.team[user] = self.dbx.users_get_account(user).name.given_name
+        return self.team[user]
 
-    @staticmethod
-    def decode_time(time):
+    @classmethod
+    def decode_time(self, time):
         months = ('', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul',
             'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
         return (str(time.day).zfill(2) + ' ' + months[time.month] + ' ' +
             str(time.hour).zfill(2) + ':' + str(time.minute).zfill(2))
 
-    @staticmethod
-    def decode_size(value):
+    @classmethod
+    def decode_size(self, value):
         if value >= 10000000000:
             value /= 1000000000
             unit = 'GB'
@@ -90,18 +85,17 @@ class DropboxShell:
             unit = ''
         return str(int(value)), unit        
 
-    @staticmethod
-    def parse_command(string):
+    @classmethod
+    def parse_command(self, string):
         args = string.split(' ')
         args = [arg for arg in args if arg != '']
         cmd = args[0] if len(args) else ''
         return cmd, args[1:]
 
-    @staticmethod
-    def read_command():
-        shell = DropboxShell
+    @classmethod
+    def read_command(self):
         cmd = input('dropbox> ')
-        cmd, args = shell.parse_command(cmd)
+        cmd, args = self.parse_command(cmd)
 
         if cmd == 'exit':
             pr.print('goodbye')
@@ -118,38 +112,38 @@ class DropboxShell:
                 tbl=True)
         elif cmd == 'ls':
             try:
-                target = shell.drop_dir if len(args) == 0 \
-                    else shell.decode_dir(shell.drop_dir, args[0])
-                print(target)
-                files = shell.dbx.files_list_folder(target).entries
-                pr.print(shell.format_ls(files))
+                target = self.drop_dir if len(args) == 0 \
+                    else self.decode_dir(self.drop_dir, args[0])
+                pr.print(target)
+                files = self.dbx.files_list_folder(target).entries
+                pr.print(self.format_ls(files))
             except Exception:
-                print('invalid target directory')
+                pr.print('invalid target directory')
         elif cmd == 'lls':
-            target = shell.local_dir if len(args) == 0 \
-                else shell.decode_dir(shell.local_dir, args[0])
+            target = self.local_dir if len(args) == 0 \
+                else self.decode_dir(self.local_dir, args[0])
             if os.path.isdir(target):
                 with os.scandir() as dir_entries:
                     for entry in dir_entries:
                         pass
             else:
-                print('invalid target directory')
+                pr.print('invalid target directory')
         elif cmd == 'cd':
             try:
-                target = shell.decode_dir(shell.drop_dir, args[0])
-                shell.dbx.files_get_metadata(target)
-                shell.drop_dir = target
+                target = self.decode_dir(self.drop_dir, args[0])
+                self.dbx.files_get_metadata(target)
+                self.drop_dir = target
             except Exception:
-                print('invalid target directory')
+                pr.print('invalid target directory')
         elif cmd == 'lcd':
-            target = shell.decode_dir(shell.drop_dir, args[0])
+            target = self.decode_dir(self.drop_dir, args[0])
             if os.path.isdir(target):
-                shell.local_dir = target
+                self.local_dir = target
             else:
-                print('invalid target directory')
+                pr.print('invalid target directory')
         elif cmd == 'dir':
-            pr.print(f'drop:  {DropboxShell.drop_dir}')
-            pr.print(f'local: {DropboxShell.local_dir}')
+            pr.print(f'drop:  {self.drop_dir}')
+            pr.print(f'local: {self.local_dir}')
         elif cmd == 'put':
             pass
         elif cmd == 'get':
@@ -161,11 +155,11 @@ class DropboxShell:
 if __name__ == '__main__':
     argparser = ArgumentParser(prog='DropboxShell',
         description='Creates a bash interface for using a Dropbox API.')
-    argparser.add_argument('--key', type=str, dest='key', nargs=1,
+    argparser.add_argument('--key', type=str, dest='key',
         default='',
         help=('Specify a Dropbox API key to connect to an account '
             'or folder; default is the key for the HII-C folder.'))
     args = argparser.parse_args()
 
-    DropboxShell.connect(args.key[0])
-    DropboxShell.shell()
+    DropboxUtil.connect(args.key[0])
+    DropboxUtil.shell()
