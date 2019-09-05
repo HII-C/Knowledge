@@ -42,5 +42,5 @@ is.*
     something every half second, no one will be able to tell what is going on anyways.
 
 - **Please update your .gitignore.** Nothing is worse than pulling an update to download
-    a bunch of script caches and have you IDE settings overwritten. Please add any
+    a bunch of script caches and have your IDE settings overwritten. Please add any
     settings folders and script caches (if applicable) to your .gitignore.

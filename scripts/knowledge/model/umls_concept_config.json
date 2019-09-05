@@ -1,0 +1,19 @@
+{
+    "target": "",
+    "population_size": 10000,
+    "test_train_split": 0.8,
+    "save_model": false,
+    "save_results": true,
+    "model_path": "umls_concept_model.pickle",
+    "result_path": "umls_concept_results.json",
+    "database": {
+        "user": "",
+        "host": "",
+        "db": "",
+        "unix_socket": "",
+        "password": "",
+        "tables": {
+
+        }
+    }
+}

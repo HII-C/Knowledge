@@ -1,7 +1,6 @@
 
 import math
 import os
-import re
 import time
 
 from datetime import datetime
@@ -9,7 +8,6 @@ from datetime import datetime
 class PrintUtil:
     persist_str = ''
     persist_rows = 0
-    logfile = None
     # https://en.wikipedia.org/wiki/ANSI_escape_code
     FRMTS = {
         'bold': 1,
@@ -20,51 +18,18 @@ class PrintUtil:
     }
 
     @classmethod
-    def log(self, filename):
-        self.logfile = open(filename, 'w')
-
-    @classmethod
-    def render_width(self, string):
-        return len(re.sub('\\x1b\[[0-9]*m', '', string))
-
-    @classmethod
-    def render_rows(self, string):
-        rows, cols = os.popen('stty size', 'r').read().split()
-        rows = int(rows)
-        cols = int(cols)
-        return sum(self.render_width(line) // cols + 1 for line 
-            in string.split('\n'))
-
-    @classmethod
-    def table(self, tbl, align='l', pad=1, border=False, wrap=False, hrule=None):
+    def table(self, tbl, brdr=False, align='l', pad=1):
         if align in ('r', 'l'):
-            aligns = [align] * len(tbl[0])
-        elif type(align) in (list, tuple):
-            aligns = align 
+            align = [align] * len(tbl[0])
         if type(pad) is int:
-            pads = [pad] * len(tbl[0])
-        elif type(pad) in (list, tuple):
-            pads = pad   
+            pad = [pad] * len(tbl[0])
         tbl = [[str(cell) for cell in row] for row in tbl]
-        widths = [max([self.render_width(cell) for cell in col]) 
+        widths = [max([len(cell) for cell in col]) 
             for col in list(map(list, zip(*tbl)))]
-        if border:
-            if hrule is None:
-                hrules = [0]*(len(tbl))
-            elif type(hrule) in (list, tuple):
-                hrules = [1 if i in hrule else 0 for i in range(len(tbl)-1)] + [0]
-            top = '+' + '+'.join('-'*(w+p*2) for w, p in zip(widths, pads)) + '+'
-            return (top + '\n' +
-                '\n'.join('|' + '|'.join([' '*p + cell.ljust(w) + ' '*p 
-                if a == 'l' else ' '*p + cell.rjust(w) + ' '*p
-                for cell, w, a, p in zip(row, widths, aligns, pads)]) + 
-                (f'|\n{top}' if hrule else '|')
-                for row, hrule in zip(tbl, hrules)) + '\n' + top)
-        else:
-            return '\n'.join(''.join(cell.ljust(w) + ' '*p
-                if a == 'l' else cell.rjust(w) + ' '*p
-                for cell, w, a, p in zip(row, widths, aligns, pads)) 
-                for row in tbl)
+        return '\n'.join([''.join([cell.ljust(width) + ' '*p
+            if a == 'l' else cell.rjust(width) + ' '*p
+            for cell, width, a, p in zip(row, widths, align, pad)]) 
+            for row in tbl])
     
     @classmethod
     def time(self, string):
@@ -113,18 +78,17 @@ class PrintUtil:
 
     @classmethod
     def print(self, string='', persist=False, replace=False, time=False, 
-            progress=None, frmt=None):
+            progress=None, tbl=False, frmt=None):
         rows, cols = os.popen('stty size', 'r').read().split()
         rows = int(rows)
         cols = int(cols)
         print(('\033[F'+' '*cols)*self.persist_rows, end='\r')
+        if tbl:
+            string = self.table(string)
         if time:
             string = self.time(string)
         if progress is not None:
             string = self.progress(string, progress)
-        if self.logfile is not None and not persist:
-            self.logfile.write(string)
-            self.logfile.flush()
         if frmt is not None:
             if type(frmt) is list:
                 string = self.format(string, *frmt)
@@ -135,7 +99,8 @@ class PrintUtil:
                 self.persist_str += '\n' + string
             else:
                 self.persist_str = string
-            self.persist_rows = self.render_rows(self.persist_str)
+            self.persist_rows = sum([math.ceil(len(row) / cols)
+                for row in string.split('\n')])
         else:
             print(string)
         if self.persist_rows:

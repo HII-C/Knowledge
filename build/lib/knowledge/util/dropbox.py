@@ -11,7 +11,7 @@ from knowledge.util.print import PrintUtil as pr
 class DropboxUtil:
     team = {}
     local_dir = '~'
-    drop_dir = '/'
+    drop_dir = '/home/benjamin'
         
     @classmethod
     def connect(self, key):
@@ -156,7 +156,7 @@ if __name__ == '__main__':
     argparser = ArgumentParser(prog='DropboxShell',
         description='Creates a bash interface for using a Dropbox API.')
     argparser.add_argument('--key', type=str, dest='key',
-        default='H6qngz3zvcAAAAAAAAAANa20pkd2rxWLB2c-afdc2ymwENxtjiqEik-Vh5HLFzPv',
+        default='',
         help=('Specify a Dropbox API key to connect to an account '
             'or folder; default is the key for the HII-C folder.'))
     args = argparser.parse_args()

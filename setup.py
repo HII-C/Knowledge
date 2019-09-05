@@ -6,7 +6,7 @@ with open('README.md', 'r') as fh:
 
 setup(
     name='knowledge-hiic',
-    version='1.0',
+    version='0.1',
     author='Benjamin Brownlee',
     author_email='benjamin.brownlee1@gmail.com',
     description='scripts for generating and manipulation HII-C knowledge source',
@@ -15,9 +15,7 @@ setup(
     url='https://github.com/HII-C/Knowledge',
     packages=find_packages(where='scripts'),
     package_dir={"": "scripts"},
-    # data_files=[
-    #     ('config', 'data/config')
-    # ],
+    include_package_data=True,
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',

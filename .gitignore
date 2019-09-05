@@ -1,4 +1,9 @@
+# settings
 .vscode
-sandbox
-*/__pycache__
-*/*/__pycache__
+.ropeproject
+
+# packaging residue
+*.egg-info
+
+# script cache
+__pycache__
