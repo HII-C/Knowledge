@@ -17,6 +17,9 @@ is.*
     for readability. This means using newlines and indents for listed arguments as well
     as capitalizing SQL reserved words.
 
+- **Use naming conventions.** Files are lowercase words delimited by underscores, modules
+    are just a single lowercase word, and classes capitalized and camel case.
+
 ## Repository Guidelines
 
 - **Make use of utils.** There is no point in writing the same code a dozen times. The

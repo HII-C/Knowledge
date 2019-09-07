@@ -1,0 +1,30 @@
+{
+    "target_concept": "",
+    "source_concept": [],
+    "population": 10000,
+    "save_model": false,
+    "save_results": true,
+    "model_path": "umls_concept_model.pickle",
+    "result_path": "umls_concept_results.json",
+    "xgb": {
+        
+    },
+    "database": {
+        "user": "",
+        "host": "",
+        "db": "",
+        "unix_socket": "",
+        "password": "",
+        "tables": {
+            "agents": {
+                "name": "",
+                "schema": [
+
+                ],
+                "btree_idxs": {},
+                "hash_idxs": {},
+                "spatial_idxs": {}
+            }
+        }
+    }
+}

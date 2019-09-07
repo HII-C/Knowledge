@@ -10,7 +10,6 @@ class PrintUtil:
     persist_str = ''
     persist_rows = 0
     logfile = None
-    # https://en.wikipedia.org/wiki/ANSI_escape_code
     FRMTS = {
         'bold': 1,
         'faint': 2,
@@ -25,6 +24,7 @@ class PrintUtil:
 
     @classmethod
     def render_width(self, string):
+        # https://en.wikipedia.org/wiki/ANSI_escape_code
         return len(re.sub('\\x1b\[[0-9]*m', '', string))
 
     @classmethod
@@ -39,19 +39,23 @@ class PrintUtil:
     def table(self, tbl, align='l', pad=1, border=False, wrap=False, hrule=None):
         if align in ('r', 'l'):
             aligns = [align] * len(tbl[0])
-        elif type(align) in (list, tuple):
+        elif type(align) in (list, tuple) and all([a in ('r', 'l') for a in align]):
             aligns = align 
+        else:
+            return ''
         if type(pad) is int:
             pads = [pad] * len(tbl[0])
-        elif type(pad) in (list, tuple):
-            pads = pad   
+        elif type(pad) in (list, tuple) and all([type(p) is int for p in pad]):
+            pads = pad
+        else:
+            return ''
         tbl = [[str(cell) for cell in row] for row in tbl]
         widths = [max([self.render_width(cell) for cell in col]) 
             for col in list(map(list, zip(*tbl)))]
         if border:
             if hrule is None:
                 hrules = [0]*(len(tbl))
-            elif type(hrule) in (list, tuple):
+            elif type(hrule) in (list, tuple) and all([type(h) is int for h in hrules]):
                 hrules = [1 if i in hrule else 0 for i in range(len(tbl)-1)] + [0]
             top = '+' + '+'.join('-'*(w+p*2) for w, p in zip(widths, pads)) + '+'
             return (top + '\n' +
@@ -75,6 +79,7 @@ class PrintUtil:
 
     @classmethod
     def format(self, string, *frmts):
+        # https://en.wikipedia.org/wiki/ANSI_escape_code
         codes = tuple(self.FRMTS[frmt] for frmt in frmts if frmt in self.FRMTS)
         return ('\x1b[%sm'*len(codes) % codes) + string + '\x1b[0m'        
     

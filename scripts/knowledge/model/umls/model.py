@@ -6,7 +6,7 @@ import numpy as np
 from pkg_resources import resource_filename
 from argparse import ArgumentParser
 
-from knowledge.model.umls_concept import UmlsConceptDatabase
+from knowledge.model.umls.database import UmlsConceptDatabase
 from knowledge.util.print import PrintUtil as pr
 
 
@@ -15,14 +15,35 @@ class UmlsConceptModel:
         self.database = UmlsConceptDatabase(database)
 
     @staticmethod
-    def validate_config(config):
+    def default_config():
+        configpath = resource_filename('knowledge', 'model/umls/config.json')
+        with open(configpath, 'r') as configfile:
+            config = json.load(configfile)
+        return config
+
+    @classmethod
+    def merge_config(self, primary, default):
         pass
+
+    @classmethod
+    def validate_config(self, config):
+        return True
 
     def run(self, config=None, silent=False):
-        pass
+        self.fetch_population(size=config['population_size'], silent=silent)
+        self.fetch_concepts(concepts=config['concepts'], silent=silent)
+        self.train_model(silent=silent)
+        self.test_model(silent=silent)
+        if config['save_model']:
+            self.save_model(config['model_path'])
+        if config['save_results']:
+            self.save_results(config['result_path'])
 
     def fetch_population(self, agents=None, size=None, silent=False):
-        pass
+        if not silent:
+            pr.print('Fetching model population.')
+
+        
 
     def fetch_concepts(self, concepts=None, silent=False):
         pass
@@ -46,7 +67,7 @@ if __name__ == '__main__':
     parser.add_argument('--config', type=str, dest='config',
         help='specify a config file location; default is the "umls_concept_config'
             '.json" file found in this module',
-        default=resource_filename('knowledge', 'model/concept_util_config.json'))
+        default=resource_filename('knowledge', 'model/umls/config.json'))
     parser.add_argument('--log', type=str, dest='log',
         help='specify a log file location; by default the log will not be saved',
         default=None)
