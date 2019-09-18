@@ -101,15 +101,14 @@ class DropboxUtil:
             pr.print('goodbye')
             return False
         elif cmd == 'help':
-            pr.print((
+            pr.print(pr.table((
                 ('cd', 'changes Dropbox directory to specified directory'),
                 ('dir', 'displays working directories'),
                 ('exit', 'exits the dropbox API shell'),
                 ('help', 'lists all valid commands and their usage'),
                 ('lcd', 'changes local directory to specified directory'),                
                 ('lls', 'lists all the files and folders in working local directory'),
-                ('ls', 'lists all the files and folders in working Dropbox directory')),
-                tbl=True)
+                ('ls', 'lists all the files and folders in working Dropbox directory'))))
         elif cmd == 'ls':
             try:
                 target = self.drop_dir if len(args) == 0 \
