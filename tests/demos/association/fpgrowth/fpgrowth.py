@@ -28,10 +28,7 @@ for item in parser:
 
 loadfile.close()
 
-patterns = pyfpgrowth.find_frequent_patterns(transactions, 500)
+patterns = pyfpgrowth.find_frequent_patterns(transactions, 100)
 associations = pyfpgrowth.generate_association_rules(patterns, 0.7)
 
 pprint.pprint(associations)
-
-# with open(savepath, 'w') as savefile:
-#     json.dump(associations, savefile)
