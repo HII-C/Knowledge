@@ -1,2 +1,2 @@
 include README.md
-include scripts/icarus/*/*/config.json
+include scripts/knowledge/*/*/config.json

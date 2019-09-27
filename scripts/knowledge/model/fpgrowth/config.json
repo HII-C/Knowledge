@@ -1,0 +1,64 @@
+{
+    "": "REQUIRED PARAMETERS",
+    "min_support": 100,
+    "min_confidence": 0.75,
+
+    "": "OPTIONAL PARAMETERS",
+    "silent": false,
+    "force": false,
+    "create_idxs": true,
+    
+    "": "DATABASE STRUCTURE",
+    "database": {
+        "user": "python",
+        "host": "localhost",
+        "db": "associations",
+        "password": "",
+        "tables": {
+            "associations": {
+                "schema": [
+                    "association_id MEDIUMINT UNSIGNED",
+                    "support SMALLINT UNSIGNED",
+                    "confidence FLOAT"
+                ],
+                "primary_idx": [ "assocation_id" ],
+                "btree_idxs": {},
+                "hash_idxs": {}
+            },
+            "hypotheses": {
+                "schema": [
+                    "hypothesis_id MEDIUMINT UNSIGNED",
+                    "association_id MEDIUMINT UNSIGNED",
+                    "association_idx TINYINT UNSIGNED",
+                    "item_id MEDIUMINT UNSIGNED"
+                ],
+                "primary_idx": [ "hypothesis_id" ],
+                "btree_idxs": {
+                    "association": [
+                        "association_id",
+                        "association_idx"
+                    ], 
+                    "item": [ "item_id" ]
+                },
+                "hash_idxs": {}
+            },
+            "conclusions": {
+                "schema": [
+                    "conclusion_id MEDIUMINT UNSIGNED",
+                    "association_id MEDIUMINT UNSIGNED",
+                    "association_idx TINYINT UNSIGNED",
+                    "item_id MEDIUMINT UNSIGNED"
+                ],
+                "primary_idx": [ "conclusion_id" ],
+                "btree_idxs": {
+                    "association": [
+                        "association_id",
+                        "association_idx"
+                    ],
+                    "item": [ "item_id" ]
+                },
+                "hash_idxs": {}
+            }
+        }
+    }
+}

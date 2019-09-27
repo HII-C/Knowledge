@@ -5,6 +5,7 @@ import shlex
 import sys
 import os
 
+from datetime import datetime
 from argparse import ArgumentParser
 from collections import defaultdict
 
@@ -71,8 +72,19 @@ class DropboxUtil:
         return pr.table(output, align=align, pad=pad)
 
     @classmethod
-    def format_lls(self, data):
-        pass
+    def format_lls(self, target):
+        table = []
+        with os.scandir(target) as dir_entries:
+            for entry in dir_entries:
+                stats = entry.stat()
+                table.append((
+                    stats.st_uid,
+                    *self.decode_size(stats.st_size),
+                    self.decode_time(datetime.fromtimestamp(stats.st_mtime)),
+                    entry.name))
+        align = ['l', 'r', 'l', 'r', 'l']
+        pad = [2, 0, 2, 2, 2]
+        return pr.table(table, align=align, pad=pad)
 
     @classmethod
     def decode_dir(self, dir1, dir2):
@@ -80,10 +92,10 @@ class DropboxUtil:
         str2 = dir2.split('/')
         if str2[0] == '':
             return '/'.join(str2)
-        while str2[0] == '..':
+        while len(str2) and str2[0] == '..':
             str2.pop(0)
             str1.pop(-1)
-        while str2[0] == '.':
+        while len(str2) and str2[0] == '.':
             str2.pop(0)
         while len(str1) > 1 and str1[-1] == '':
             str1.pop(-1)
@@ -137,20 +149,23 @@ class DropboxUtil:
             return False
         elif cmd == 'help':
             pr.print(pr.table((
-                ('cd', 'changes Dropbox directory to specified directory'),
+                ('cd', 'changes dropbox directory to specified directory'),
                 ('dir', 'displays working directories'),
                 ('exit', 'exits the dropbox API shell'),
                 ('help', 'lists all valid commands and their usage'),
+                ('get', 'downloads file from dropbox to local filesystem'),
                 ('lcd', 'changes local directory to specified directory'),                
                 ('lls', 'lists all the files and folders in working local directory'),
-                ('ls', 'lists all the files and folders in working Dropbox directory'))))
+                ('ls', 'lists all the files and folders in working dropbox directory'),
+                ('put', 'uploads file from local filesystem to dropbox'))))
         elif cmd == 'ls':
             if len(args) < 2:
                 try:
                     target = (self.drop_dir if len(args) == 0
                         else self.decode_dir(self.drop_dir, args[0]))
                     pr.print(target)
-                    files = self.dbx.files_list_folder(target).entries
+                    files = self.dbx.files_list_folder(target if target != '/' 
+                        else '').entries
                     pr.print(self.format_ls(files))
                 except Exception:
                     pr.print('invalid target directory')
@@ -161,9 +176,8 @@ class DropboxUtil:
                 target = (self.local_dir if len(args) == 0
                     else self.decode_dir(self.local_dir, args[0]))
                 if os.path.isdir(target):
-                    with os.scandir() as dir_entries:
-                        for entry in dir_entries:
-                            pass
+                    pr.print(target)
+                    pr.print(self.format_lls(target))
                 else:
                     pr.print('invalid target directory')
             else:
@@ -172,7 +186,8 @@ class DropboxUtil:
             if len(args) == 1:
                 try:
                     target = self.decode_dir(self.drop_dir, args[0])
-                    self.dbx.files_get_metadata(target)
+                    if target != '/':
+                        self.dbx.files_get_metadata(target)
                     self.drop_dir = target
                 except Exception:
                     pr.print('invalid target directory')
@@ -180,7 +195,7 @@ class DropboxUtil:
                 pr.print(f'command "cd" expected exactly one argument but got {len(args)}')
         elif cmd == 'lcd':
             if len(args) == 1:
-                target = self.decode_dir(self.drop_dir, args[0])
+                target = self.decode_dir(self.local_dir, args[0])
                 if os.path.isdir(target):
                     self.local_dir = target
                 else:
@@ -194,8 +209,10 @@ class DropboxUtil:
             if len(args) == 2:
                 if os.path.isfile(args[0]):
                     try:
+                        local = self.decode_dir(self.local_dir, args[0])
+                        drop = self.decode_dir(self.drop_dir, args[1])
                         pr.print('uploading file to dropbox')
-                        self.upload(args[0], args[1])
+                        self.upload(local, drop)
                     except Exception:
                         pr.print('invalid dropbox file path')
                 else:
@@ -206,8 +223,10 @@ class DropboxUtil:
             if len(args) == 2:
                 if os.path.isdir('/'.join(args[0].split('/')[:-1])):
                     try:
+                        local = self.decode_dir(self.local_dir, args[0])
+                        drop = self.decode_dir(self.drop_dir, args[1])
                         pr.print('downloading file from dropbox')
-                        self.download(args[0], args[1])
+                        self.download(local, drop)
                     except Exception:
                         pr.print('invalid dropbox file path')
                 else:
@@ -221,7 +240,7 @@ class DropboxUtil:
 if __name__ == '__main__':
     argparser = ArgumentParser(prog='DropboxShell',
         description='Creates a bash interface for using a Dropbox API.')
-    argparser.add_argument('--key', type=str, dest='key', default=None,
+    argparser.add_argument('--key', type=str, dest='key', default=None, required=True,
         help=('Specify a Dropbox API key to connect to an account.'))
     args = argparser.parse_args()
 

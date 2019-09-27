@@ -28,6 +28,14 @@ class DatabaseUtil:
         self.cursor.execute(query)
         self.connection.commit()
 
+    def table_exists(self, *tables):
+        conditions = f'" or `Tables_in_{self.db}` like "'.join(tables)
+        query = f'''
+            SHOW TABLES FROM {self.db}
+            WHERE `Tables_in_{self.db}` like "{conditions}"'''
+        self.cursor.execute(query)
+        return [row[0] for row in self.cursor.fetchall()]
+
     def create_table(self, table):
         table_data = self.tables[table]
         sql_schema = (', ').join(table_data['schema'])

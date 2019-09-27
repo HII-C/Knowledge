@@ -1,4 +1,5 @@
 xgboost
+pandas
 scikit-learn
 numpy
 mysqlclient

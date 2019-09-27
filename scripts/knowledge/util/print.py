@@ -118,7 +118,7 @@ class PrintUtil:
 
     @classmethod
     def print(self, string='', persist=False, replace=False, time=False, 
-            progress=None, frmt=None):
+            progress=None, frmt=None, inquiry=False):
         rows, cols = os.popen('stty size', 'r').read().split()
         rows = int(rows)
         cols = int(cols)
@@ -141,6 +141,9 @@ class PrintUtil:
             else:
                 self.persist_str = string
             self.persist_rows = self.render_rows(self.persist_str)
+        elif inquiry:
+            response = input(string).lower()
+            return response == 'y' or response == 'yes'
         else:
             print(string)
         if self.persist_rows:
