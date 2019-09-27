@@ -2,3 +2,4 @@ xgboost
 scikit-learn
 numpy
 mysqlclient
+fpgrowth

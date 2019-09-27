@@ -1,5 +1,7 @@
 
 import dropbox
+import readline
+import shlex
 import sys
 import os
 
@@ -10,7 +12,7 @@ from knowledge.util.print import PrintUtil as pr
 
 class DropboxUtil:
     team = {}
-    local_dir = '~'
+    local_dir = '/'
     drop_dir = '/'
         
     @classmethod
@@ -18,28 +20,58 @@ class DropboxUtil:
         self.dbx = dropbox.Dropbox(key)
 
     @classmethod
-    def shell(self):
-        while self.read_command():
-            pass
+    def shell(self, key=None):
+        self.local_dir = os.getcwd()
+        if key is not None:
+            self.connect(key)
+        if self.dbx is not None:
+            while self.exec_command(self.read_command()):
+                pass
+        else:
+            pr.print('not connected to dropbox API; shell request terminated')
+
+    @classmethod
+    def upload(self, local_path, dest_path):
+        local_file = open(local_path, 'rb')
+        file_size = os.path.getsize(local_path)
+
+        CHUNK_SIZE = 4 * 1024 * 1024
+
+        if file_size <= CHUNK_SIZE:
+            self.dbx.files_upload(local_file.read(), dest_path)
+        else:
+            session = self.dbx.files_upload_session_start(local_file.read(CHUNK_SIZE))
+            cursor = dropbox.files.UploadSessionCursor(session_id=session.session_id, offset=local_file.tell())
+            commit = dropbox.files.CommitInfo(path=dest_path)
+            while local_file.tell() < file_size:
+                if file_size - local_file.tell() <= CHUNK_SIZE:
+                    self.dbx.files_upload_session_finish(local_file.read(CHUNK_SIZE), cursor, commit)
+                else:
+                    self.dbx.files_upload_session_append(local_file.read(CHUNK_SIZE), cursor.session_id, cursor.offset)
+                    cursor.offset = local_file.tell()
+
+    @classmethod
+    def download(self, local_path, dest_path):
+        self.dbx.files_download_to_file(local_path, dest_path)
 
     @classmethod
     def format_ls(self, data):
         output = []
         for entry in data:
             output.append((
-                self.decode_user(entry.sharing_info.modified_by) \
-                    if hasattr(entry.sharing_info, 'modified_by') else 'folder',
-                *self.decode_size(entry.size \
-                    if hasattr(entry, 'size') else 4096),
-                self.decode_time(entry.server_modified) \
-                    if hasattr(entry, 'server_modified') else '',
+                (self.decode_user(entry.sharing_info.modified_by)
+                    if hasattr(entry.sharing_info, 'modified_by') else 'folder'),
+                *(self.decode_size(entry.size) 
+                    if hasattr(entry, 'size') else ('4096', '')),
+                (self.decode_time(entry.server_modified)
+                    if hasattr(entry, 'server_modified') else '-'),
                 entry.name))
         align = ['l', 'r', 'l', 'r', 'l']
         pad = [2, 0, 2, 2, 2]
         return pr.table(output, align=align, pad=pad)
 
-    @staticmethod
-    def format_lls(data):
+    @classmethod
+    def format_lls(self, data):
         pass
 
     @classmethod
@@ -94,9 +126,12 @@ class DropboxUtil:
 
     @classmethod
     def read_command(self):
-        cmd = input('dropbox> ')
-        cmd, args = self.parse_command(cmd)
+        return input('dropbox> ')
 
+    @classmethod
+    def exec_command(self, cmd):
+        args = shlex.split(cmd)
+        cmd = args.pop(0)
         if cmd == 'exit':
             pr.print('goodbye')
             return False
@@ -110,43 +145,75 @@ class DropboxUtil:
                 ('lls', 'lists all the files and folders in working local directory'),
                 ('ls', 'lists all the files and folders in working Dropbox directory'))))
         elif cmd == 'ls':
-            try:
-                target = self.drop_dir if len(args) == 0 \
-                    else self.decode_dir(self.drop_dir, args[0])
-                pr.print(target)
-                files = self.dbx.files_list_folder(target).entries
-                pr.print(self.format_ls(files))
-            except Exception:
-                pr.print('invalid target directory')
+            if len(args) < 2:
+                try:
+                    target = (self.drop_dir if len(args) == 0
+                        else self.decode_dir(self.drop_dir, args[0]))
+                    pr.print(target)
+                    files = self.dbx.files_list_folder(target).entries
+                    pr.print(self.format_ls(files))
+                except Exception:
+                    pr.print('invalid target directory')
+            else:
+                pr.print(f'command "ls" expected zero or one arguments but got {len(args)}')
         elif cmd == 'lls':
-            target = self.local_dir if len(args) == 0 \
-                else self.decode_dir(self.local_dir, args[0])
-            if os.path.isdir(target):
-                with os.scandir() as dir_entries:
-                    for entry in dir_entries:
-                        pass
+            if len(args) < 2:
+                target = (self.local_dir if len(args) == 0
+                    else self.decode_dir(self.local_dir, args[0]))
+                if os.path.isdir(target):
+                    with os.scandir() as dir_entries:
+                        for entry in dir_entries:
+                            pass
+                else:
+                    pr.print('invalid target directory')
             else:
-                pr.print('invalid target directory')
+                pr.print(f'command "lls" expected zero or one arguments but got {len(args)}')
         elif cmd == 'cd':
-            try:
-                target = self.decode_dir(self.drop_dir, args[0])
-                self.dbx.files_get_metadata(target)
-                self.drop_dir = target
-            except Exception:
-                pr.print('invalid target directory')
-        elif cmd == 'lcd':
-            target = self.decode_dir(self.drop_dir, args[0])
-            if os.path.isdir(target):
-                self.local_dir = target
+            if len(args) == 1:
+                try:
+                    target = self.decode_dir(self.drop_dir, args[0])
+                    self.dbx.files_get_metadata(target)
+                    self.drop_dir = target
+                except Exception:
+                    pr.print('invalid target directory')
             else:
-                pr.print('invalid target directory')
+                pr.print(f'command "cd" expected exactly one argument but got {len(args)}')
+        elif cmd == 'lcd':
+            if len(args) == 1:
+                target = self.decode_dir(self.drop_dir, args[0])
+                if os.path.isdir(target):
+                    self.local_dir = target
+                else:
+                    pr.print('invalid target directory')
+            else:
+                pr.print(f'command "lcd" expected exactly one argument but got {len(args)}')
         elif cmd == 'dir':
             pr.print(f'drop:  {self.drop_dir}')
             pr.print(f'local: {self.local_dir}')
         elif cmd == 'put':
-            pass
+            if len(args) == 2:
+                if os.path.isfile(args[0]):
+                    try:
+                        pr.print('uploading file to dropbox')
+                        self.upload(args[0], args[1])
+                    except Exception:
+                        pr.print('invalid dropbox file path')
+                else:
+                    pr.print('invalid local file path')
+            else:
+                pr.print(f'command "put" expected exactly two arguments but got {len(args)}')
         elif cmd == 'get':
-            pass
+            if len(args) == 2:
+                if os.path.isdir('/'.join(args[0].split('/')[:-1])):
+                    try:
+                        pr.print('downloading file from dropbox')
+                        self.download(args[0], args[1])
+                    except Exception:
+                        pr.print('invalid dropbox file path')
+                else:
+                    pr.print('invalid local directory')
+            else:
+                pr.print(f'command "get" expected exactly two arguments but got {len(args)}')
         else:
             pr.print('invalid command; type "help" for list of valid commands')
         return True
@@ -154,11 +221,9 @@ class DropboxUtil:
 if __name__ == '__main__':
     argparser = ArgumentParser(prog='DropboxShell',
         description='Creates a bash interface for using a Dropbox API.')
-    argparser.add_argument('--key', type=str, dest='key',
-        default='H6qngz3zvcAAAAAAAAAANa20pkd2rxWLB2c-afdc2ymwENxtjiqEik-Vh5HLFzPv',
-        help=('Specify a Dropbox API key to connect to an account '
-            'or folder; default is the key for the HII-C folder.'))
+    argparser.add_argument('--key', type=str, dest='key', default=None,
+        help=('Specify a Dropbox API key to connect to an account.'))
     args = argparser.parse_args()
 
-    DropboxUtil.connect(args.key[0])
+    DropboxUtil.connect(args.key)
     DropboxUtil.shell()
