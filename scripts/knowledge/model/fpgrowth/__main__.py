@@ -40,8 +40,3 @@ except Exception as err:
 
 model = FpgrowthModel(database)
 model.run(config)
-
-    
-
-
-    

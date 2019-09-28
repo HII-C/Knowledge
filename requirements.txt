@@ -3,4 +3,4 @@ pandas
 scikit-learn
 numpy
 mysqlclient
-fpgrowth
+mlxtend

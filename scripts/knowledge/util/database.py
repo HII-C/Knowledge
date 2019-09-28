@@ -54,6 +54,14 @@ class DatabaseUtil:
         self.cursor.execute(query)
         self.connection.commit()
 
+    def create_primary_idx(self, table):
+        cols = ', '.join(self.tables[table]['primary_idx'])
+        query = f'''
+            ALTER TABLE {self.db}.{table}
+            ADD PRIMARY KEY ({cols})'''
+        self.cursor.execute(query)
+        self.connection.commit()
+
     def create_hash_idx(self, table, name):
         cols = ', '.join(self.tables[table]['hash_idxs'][name])
         query = f'''
@@ -80,6 +88,10 @@ class DatabaseUtil:
     
     def create_all_idxs(self, table, silent=False):
         tbl_data = self.tables[table]
+        if 'primary_idx' in tbl_data:
+            if not silent:
+                pr.print(f'Creating primary index on table "{table}".', time=True)
+                self.create_primary_idx(table)
         if 'spatial_idxs' in tbl_data:
             for idx in tbl_data['spatial_idxs']:
                 if not silent:

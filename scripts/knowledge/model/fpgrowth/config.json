@@ -1,12 +1,13 @@
 {
     "": "REQUIRED PARAMETERS",
-    "min_support": 100,
-    "min_confidence": 0.75,
+    "min_support": 0.5,
+    "min_confidence": 0.85,
 
     "": "OPTIONAL PARAMETERS",
     "silent": false,
     "force": false,
     "create_idxs": true,
+    "max_events": 470000,
     
     "": "DATABASE STRUCTURE",
     "database": {
@@ -18,21 +19,24 @@
             "associations": {
                 "schema": [
                     "association_id MEDIUMINT UNSIGNED",
-                    "support SMALLINT UNSIGNED",
-                    "confidence FLOAT"
+                    "support FLOAT",
+                    "confidence FLOAT",
+                    "lift FLOAT",
+                    "leverage FLOAT",
+                    "conviction FLOAT"
                 ],
                 "primary_idx": [ "assocation_id" ],
                 "btree_idxs": {},
                 "hash_idxs": {}
             },
-            "hypotheses": {
+            "antecedents": {
                 "schema": [
-                    "hypothesis_id MEDIUMINT UNSIGNED",
+                    "antecedent_id MEDIUMINT UNSIGNED",
                     "association_id MEDIUMINT UNSIGNED",
                     "association_idx TINYINT UNSIGNED",
                     "item_id MEDIUMINT UNSIGNED"
                 ],
-                "primary_idx": [ "hypothesis_id" ],
+                "primary_idx": [ "antecedent_id" ],
                 "btree_idxs": {
                     "association": [
                         "association_id",
@@ -42,14 +46,14 @@
                 },
                 "hash_idxs": {}
             },
-            "conclusions": {
+            "consequents": {
                 "schema": [
-                    "conclusion_id MEDIUMINT UNSIGNED",
+                    "consequent_id MEDIUMINT UNSIGNED",
                     "association_id MEDIUMINT UNSIGNED",
                     "association_idx TINYINT UNSIGNED",
                     "item_id MEDIUMINT UNSIGNED"
                 ],
-                "primary_idx": [ "conclusion_id" ],
+                "primary_idx": [ "consequent_id" ],
                 "btree_idxs": {
                     "association": [
                         "association_id",
