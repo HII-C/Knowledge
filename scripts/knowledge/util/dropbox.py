@@ -149,15 +149,15 @@ class DropboxUtil:
             return False
         elif cmd == 'help':
             pr.print(pr.table((
-                ('cd', 'changes dropbox directory to specified directory'),
+                ('cd [drop_dir]', 'changes dropbox directory to specified directory'),
                 ('dir', 'displays working directories'),
                 ('exit', 'exits the dropbox API shell'),
                 ('help', 'lists all valid commands and their usage'),
-                ('get', 'downloads file from dropbox to local filesystem'),
-                ('lcd', 'changes local directory to specified directory'),                
-                ('lls', 'lists all the files and folders in working local directory'),
-                ('ls', 'lists all the files and folders in working dropbox directory'),
-                ('put', 'uploads file from local filesystem to dropbox'))))
+                ('get [local_dir] [drop_dir]', 'downloads file from dropbox to local filesystem'),
+                ('lcd [local_dir]', 'changes local directory to specified directory'),                
+                ('lls [local_dir]', 'lists all the files and folders in working local directory'),
+                ('ls [drop_dir]', 'lists all the files and folders in working dropbox directory'),
+                ('put [local_dir] [drop_dir]', 'uploads file from local filesystem to dropbox'))))
         elif cmd == 'ls':
             if len(args) < 2:
                 try:

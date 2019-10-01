@@ -14,6 +14,11 @@ class FpgrowthModel:
         self.database = FpgrowthDatabaseUtil(database)
 
     @staticmethod
+    def chunk(arr, n):
+        for i in range(0, len(arr), n):
+            yield arr[i: i+n]
+
+    @staticmethod
     def validate_config(config):
         required = ('min_support', 'min_confidence')
         types = (float, float)
@@ -30,9 +35,9 @@ class FpgrowthModel:
         if config['min_confidence'] <= 0:
             raise ValueError('Parameter "min_confidence" must be n > 0.')
 
-        optional = ('silent', 'create_idxs', 'force', 'max_events')
-        types = (bool, bool, bool, int)
-        defaults = (False, True, False, 0)
+        optional = ('silent', 'create_idxs', 'force', 'max_events', 'bin_size')
+        types = (bool, bool, bool, int, int)
+        defaults = (False, True, False, 0, 100000)
 
         for param, kind, default in zip(optional, types, defaults):
             if param not in config:
@@ -43,6 +48,8 @@ class FpgrowthModel:
 
         if config['max_events'] < 0:
             raise ValueError('Parameter "max_events" must be n >= 0.')
+        if config['bin_size'] <= 0:
+            raise ValueError('Parameter "bin_size" must be n > 0.')
 
         return config
 
@@ -52,8 +59,8 @@ class FpgrowthModel:
 
         if not silent:
             pr.print('Beginning fpgrowth model run.', time=True)
-            pr.print('Predefining tables on database.', time=True)
-        self.create_tables()
+            pr.print('Predefining association tables on database.', time=True)
+        self.create_tables(config['force'])
 
         if not silent:
             pr.print('Fetching transaction database to dense matrix.', time=True)
@@ -64,17 +71,31 @@ class FpgrowthModel:
             pr.print('Finding frequent itemsets in dense matrix.', time=True)
         itemsets = self.frequent_itemsets(matrix, config['min_support'])
 
+        if len(itemsets) == 0:
+            pr.print('Did not find any (0) frequent itemsets.', time=True)
+            pr.print('Consider lowering parameter "min_support" or increasing '
+                'parameter "max_events"?', time=True)
+            pr.print('Terminating fpgrowth model run.', time=True)
+            return
+
         if not silent:
             pr.print(f'Found {len(itemsets)} frequent itemsets.', time=True)
             pr.print('Building assocations rules table.', time=True)
         associations = self.association_rules(itemsets, config['min_confidence'])
 
         if not silent:
+            pr.print(f'Found {len(associations)} association rules.', time=True)
             pr.print('Pushing found associations to database.', time=True)
-        self.push_results(associations, silent)
+        self.push_results(associations, config['bin_size'], silent)
 
         if config['create_idxs']:
+            if not silent:
+                pr.print(f'Creating all indexes in database "{self.database.db}".',
+                    time=True)
             self.create_idxs(silent)
+
+        if not silent:
+            pr.print('fpgrowth model run complete.', time=True)
 
     def build_matrix(self, max_events):
         events = self.database.get_events(max_events)
@@ -96,13 +117,13 @@ class FpgrowthModel:
         return pd.DataFrame(array, columns=encoder.columns_)
 
     def frequent_itemsets(self, matrix, min_support):
-        return fpgrowth(matrix, min_support=min_support)
+        return fpgrowth(matrix, min_support=min_support, use_colnames=True)
 
     def association_rules(self, itemsets, min_confidence):
         return association_rules(itemsets, metric="confidence", 
             min_threshold=min_confidence)
 
-    def push_results(self, results, silent):
+    def push_results(self, results, bin_size, silent):
         inf = float('inf')
         associations = []
         antecedents = []
@@ -110,6 +131,7 @@ class FpgrowthModel:
         assoc_id = 0
         antec_id = 0
         conse_id = 0
+
         for idx, row in results.iterrows():
             associations.append((
                 assoc_id,
@@ -136,6 +158,14 @@ class FpgrowthModel:
                 conse_id += 1
             assoc_id += 1
 
+            if not assoc_id % bin_size:
+                self.database.write_rows(associations, 'associations')
+                self.database.write_rows(antecedents, 'antecedents')
+                self.database.write_rows(consequents, 'consequents')
+                associations = []
+                antecedents = []
+                consequents = []
+
         self.database.write_rows(associations, 'associations')
         self.database.write_rows(antecedents, 'antecedents')
         self.database.write_rows(consequents, 'consequents')
@@ -145,23 +175,16 @@ class FpgrowthModel:
             exists = self.database.table_exists(*list(self.database.tables.keys()))
             tables = '", "'.join(exists)
             if len(exists):
-                force = pr.print(f'Tables "{tables}" already exist in '
+                term = pr.print(f'Tables "{tables}" already exist in database '
                     f'"{self.database.db}". Drop and continue? [Y/n] ', 
                     inquiry=True, time=True)
-            else:
-                force = True
-        if force:
-            for table in self.database.tables.keys():
-                self.database.create_table(table)
-        else:
-            raise UserExitError('User chose to terminate process.')
+                if term:
+                    raise UserExitError('User chose to terminate process.')
+        for table in self.database.tables.keys():
+            self.database.create_table(table)
+            
 
     def create_idxs(self, silent=False):
-        if not silent:
-            pr.print(f'Creating all indexes in database "{self.database.db}".',
-                time=True)
         for tbl in self.database.tables:
             self.database.create_all_idxs(tbl)
-        if not silent:
-            pr.print(f'Index creation complete.', time=True)
         

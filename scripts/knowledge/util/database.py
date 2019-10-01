@@ -3,6 +3,7 @@ import MySQLdb
 import warnings
 
 from knowledge.util.print import PrintUtil as pr
+from knowledge.util.error import UserExitError
 
 warnings.filterwarnings('ignore', category=MySQLdb._exceptions.Warning)
 
@@ -13,15 +14,32 @@ class DatabaseUtil:
         elif type(params) is dict:
             keys = ('user', 'password', 'db', 'host', 'unix_socket')
             login = {key:params[key] for key in keys if key in params}
+            self.user = params['user']
+            self.host = params['host']
+            self.db = params['db']
+            self.tables = params['tables'] if 'tables' in params else {}
             try:
                 self.connection = MySQLdb.connect(**login)
                 self.cursor = self.connection.cursor()
-                self.user = params['user']
-                self.host = params['host']
-                self.db = params['db']
-                self.tables = params['tables'] if 'tables' in params else {}
-            except Exception as err:
-                raise err
+            except MySQLdb._exceptions.OperationalError as err:
+                if err.args[0] == 1049:
+                    term = pr.print(f'Database "{self.db}" does not exist. Create',
+                        ' and continue? [Y/n] ', time=True, inquiry=True)
+                    if term:
+                        del login['db']
+                        connection = MySQLdb.connect(**login)
+                        cursor = connection.cursor()
+                        cursor.execute(f'CREATE DATABASE {params["db"]}')
+                        connection.commit()
+                        cursor.close()
+                        connection.close()
+                        login['db'] = self.db
+                        self.connection = MySQLdb.connect(**login)
+                        self.cursor = self.connection.cursor()
+                    else:
+                        raise UserExitError('User chose to terminate process.')
+                else:
+                    raise err
 
     def drop_table(self, table):
         query = f'DROP TABLE IF EXISTS {self.db}.{table}'

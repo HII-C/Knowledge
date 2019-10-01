@@ -38,15 +38,15 @@ medical dataset.
 
 scripts for the medical concept association generation models
 
--
--
+- fpgrowth
 
 ### `knowledge.util`
 
 various utilities used through out project
 
--
--
+- dropbox
+- print
+- database
 
 ### `knowledge.env`
 

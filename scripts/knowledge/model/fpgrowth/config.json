@@ -8,6 +8,7 @@
     "force": false,
     "create_idxs": true,
     "max_events": 470000,
+    "bin_size": 100000,
     
     "": "DATABASE STRUCTURE",
     "database": {
