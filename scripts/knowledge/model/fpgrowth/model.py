@@ -20,11 +20,39 @@ class FpgrowthModel:
 
     @staticmethod
     def validate_config(config):
+        '''validates a configuration file for the fpgrowth module
+        
+        Paramaters
+        ----------
+        config: dict
+            A dictionary representation of the JSON config file.
+            See documentation for specifications of the config file.
+        
+        Returns
+        -------
+        cleanded_config: dict
+            The cleaned config, which includes all optional paramters
+            not spefiied in the input config with there default values.
+            This cleaned config can be used to run the model.
+
+        Throws
+        ------
+        ConfigError
+            A required paramater in the config is missing.
+        TypeError
+            A parameter in the config is not of the correct type.
+        ValueError
+            A paramter in the config is out of range of the allowed
+            set of values.
+        '''
+
         required = ('min_support', 'min_confidence')
         types = (float, float)
 
         for param, kind in zip(required, types):
             if param not in config:
+                raise ConfigError(f'Paramter "{param}" is required.')
+            elif config[param] is None:
                 raise ConfigError(f'Paramter "{param}" is required.')
             if type(config[param]) is not kind:
                 raise TypeError(f'Parameter "{param}" expected to be of type "'
@@ -42,6 +70,8 @@ class FpgrowthModel:
         for param, kind, default in zip(optional, types, defaults):
             if param not in config:
                 config[param] = default
+            elif config[param] is None:
+                config[param] = default
             elif type(config[param]) is not kind:
                 raise TypeError(f'Parameter "{param}" expected to be of type "'
                     f'{kind.__name__}" but found "{type(config[param]).__name__}".')
@@ -54,6 +84,19 @@ class FpgrowthModel:
         return config
 
     def run(self, config, silent=False):
+        '''runs the fpgrowth model with specified configurations
+        Parameters
+        ----------
+        config: dict
+            A dictionary representation of the JSON config file.
+            See documentation for specifications of the config file.
+
+        Throws
+        ------
+        UserExitError
+            When prompted, the user chose to exit rather than procede.
+        '''
+        
         config = self.validate_config(config)
         silent = config['silent'] or silent
 
@@ -101,15 +144,15 @@ class FpgrowthModel:
         events = self.database.get_events(max_events)
 
         transactions = []
-        hadm = []
+        hadm = set()
         hadmid = 0
         for event in events:
             if event[0] != hadmid:
                 hadmid = event[0]
                 if len(hadm):
-                    transactions.append(hadm)
-                hadm = []
-            hadm.append(event[1])
+                    transactions.append(list(hadm))
+                hadm = set()
+            hadm.add(event[1])
         del events
 
         encoder = TransactionEncoder()
@@ -178,7 +221,7 @@ class FpgrowthModel:
                 term = pr.print(f'Tables "{tables}" already exist in database '
                     f'"{self.database.db}". Drop and continue? [Y/n] ', 
                     inquiry=True, time=True)
-                if term:
+                if not term:
                     raise UserExitError('User chose to terminate process.')
         for table in self.database.tables.keys():
             self.database.create_table(table)

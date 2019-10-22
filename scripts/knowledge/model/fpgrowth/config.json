@@ -1,16 +1,16 @@
 {
-    "": "REQUIRED PARAMETERS",
+    "": "required parmaters",
     "min_support": 0.5,
     "min_confidence": 0.85,
 
-    "": "OPTIONAL PARAMETERS",
+    "": "optional paramters",
     "silent": false,
     "force": false,
     "create_idxs": true,
     "max_events": 470000,
     "bin_size": 100000,
     
-    "": "DATABASE STRUCTURE",
+    "": "database structure (changes to this may require model code base changes)",
     "database": {
         "user": "python",
         "host": "localhost",
@@ -26,7 +26,7 @@
                     "leverage FLOAT",
                     "conviction FLOAT"
                 ],
-                "primary_idx": [ "assocation_id" ],
+                "primary_idx": [ "association_id" ],
                 "btree_idxs": {},
                 "hash_idxs": {}
             },

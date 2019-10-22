@@ -1,0 +1,82 @@
+{
+    "": "required parmaters",
+    "min_support": 0.1,
+    "min_confidence": 0.85,
+    "population": 10000,
+    "bin_size": 100,
+
+    "": "optional paramters",
+    "tree_save_path": "",
+    "tree_load_path": "",
+    "silent": false,
+    "force": false,
+    "use_cached_support": false,
+    "create_idxs": true,
+    "seed": 1234,
+
+    "": "database creation structure",
+    "database": {
+        "user": "python",
+        "host": "localhost",
+        "db": "associations",
+        "password": "",
+        "tables": {
+            "support": {
+                "schema": [
+                    "item_id MEDIUMINT UNSIGNED",
+                    "support FLOAT"
+                ],
+                "primary_idx": [ "item_id" ],
+                "btree_idxs": {},
+                "hash_idxs": {}
+            },
+            "associations": {
+                "schema": [
+                    "association_id MEDIUMINT UNSIGNED",
+                    "support FLOAT",
+                    "confidence FLOAT",
+                    "lift FLOAT",
+                    "leverage FLOAT",
+                    "conviction FLOAT"
+                ],
+                "primary_idx": [ "association_id" ],
+                "btree_idxs": {},
+                "hash_idxs": {}
+            },
+            "antecedents": {
+                "schema": [
+                    "antecedent_id MEDIUMINT UNSIGNED",
+                    "association_id MEDIUMINT UNSIGNED",
+                    "association_idx TINYINT UNSIGNED",
+                    "item_id MEDIUMINT UNSIGNED"
+                ],
+                "primary_idx": [ "antecedent_id" ],
+                "btree_idxs": {
+                    "association": [
+                        "association_id",
+                        "association_idx"
+                    ], 
+                    "item": [ "item_id" ]
+                },
+                "hash_idxs": {}
+            },
+            "consequents": {
+                "schema": [
+                    "consequent_id MEDIUMINT UNSIGNED",
+                    "association_id MEDIUMINT UNSIGNED",
+                    "association_idx TINYINT UNSIGNED",
+                    "item_id MEDIUMINT UNSIGNED"
+                ],
+                "primary_idx": [ "consequent_id" ],
+                "btree_idxs": {
+                    "association": [
+                        "association_id",
+                        "association_idx"
+                    ],
+                    "item": [ "item_id" ]
+                },
+                "hash_idxs": {}
+            }
+        }
+    }
+}

@@ -1,0 +1,17 @@
+{
+    "parameter": {
+        "type": "bool,int,float,str",
+        "regex": "",
+        "in": [
+
+        ],
+        "special": [
+            "checkFileReadable",
+            "checkFileWritable"
+        ],
+        "required": null,
+        "default": null,
+        "min": null,
+        "max": null
+    }
+}
