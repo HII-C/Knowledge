@@ -1,4 +1,6 @@
 
+import psutil
+
 import pandas as pd
 import numpy as np
 
@@ -18,8 +20,10 @@ class Fpgrowth:
 
     def __init__(self, support):
         self.tree = Tree()
-        self.pointer = None
         self.support = support
+
+        #temp
+        self.depth = 0
     
 
     @staticmethod
@@ -114,18 +118,32 @@ class Fpgrowth:
             The tree to read patterns from; this function will continue to
             recursively itself with subtrees until the tree is a path or empty.
 
-        min_support: float
+        min_support: int
             The minimum support of a pattern for it to be included in the
             list of frequent patterns.
+
+        max_size: int
+
 
         Returns
         -------
 
 
         '''
-        
+
+        # pr.print('Finding patterns on subtree.', time=True)
+        # input()
         items = tree.nodes.keys()
         if tree.is_path():
+            # temporary observational process
+            mem = psutil.virtual_memory().percent
+            pr.print('Path branch.', time=True)
+            pr.print(f'Current tree depth: {self.depth}', time=True)
+            pr.print(f'Current tree complexity: ' +
+                str(sum([len(n) for n in self.tree.nodes])), time=True)
+            pr.print(f'Current memory utilization: {mem}%.', time=True)
+            input('Press enter to continue.')
+
             size_remain = len(items) + 1
             if max_size:
                 size_remain = max_size - len(tree.items) + 1
@@ -133,16 +151,36 @@ class Fpgrowth:
                 for itemset in combinations(items, i):
                     support = min([tree.nodes[i][0].count for i in itemset])
                     yield support, tree.items + list(itemset)
-        elif not max_size or max_size > len(tree.items):
+        elif not max_size or max_size >= len(tree.items):
+            # temporary observational process
+            mem = psutil.virtual_memory().percent
+            pr.print('Leaf tree (less than max size).', time=True)
+            pr.print(f'Current tree depth: {self.depth}', time=True)
+            pr.print(f'Current tree complexity: ' +
+                str(sum([len(n) for n in self.tree.nodes.values()])), time=True)
+            pr.print(f'Current memory utilization: {mem}%.', time=True)
+            input('Press enter to continue.')
+            
             for item in items:
                 support = sum([node.count for node in tree.nodes[item]])
                 yield support, tree.items + [item]
         else:
             for item in items:
                 subtree = tree.conditional_tree(item, min_support)
-                
-                input('Press Enter to continue.')
-                self.find_patterns(subtree, min_support)
+
+                # temporary observational process
+                mem = psutil.virtual_memory().percent
+                pr.print('Recursive call.')
+                pr.print(f'Current tree depth: {self.depth}', time=True)
+                pr.print(f'Current tree complexity: ' +
+                    str(sum([len(n) for n in self.tree.nodes.values()])), time=True)
+                pr.print(f'Current memory utilization: {mem}%.', time=True)
+                input('Press enter to continue.')
+                self.depth += 1
+                self.find_patterns(subtree, min_support, max_size)
+                self.depth -= 1
+
+                # real process
                 # for support, itemset in self.find_patterns(subtree, min_support):
                 #     yield support, itemset
 
@@ -177,9 +215,9 @@ class Tree:
             else:
                 break
 
-        for item in itemset[:idx]:
+        for item in itemset[idx:]:
             child = Node(item, count=count, parent=node)
-            node.children.append(child)
+            node.children[item] = child
             self.nodes[item].append(child)
             node = child
             

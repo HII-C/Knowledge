@@ -8,7 +8,7 @@ class AssociationDatabase(DatabaseUtil):
             SELECT
                 SUBJECT_ID,
                 HADM_ID
-            FROM mimic.ADMISSIONS
+            FROM mimiciiiv14.ADMISSIONS
             ORDER BY RAND({seed})
             LIMIT {size}
         '''
@@ -19,8 +19,8 @@ class AssociationDatabase(DatabaseUtil):
         query = f'''
             SELECT
                 HADM_ID,
-                ITEMID
-            FROM mimic.CHARTEVENTS
+                ICD9_CODE
+            FROM mimiciiiv14.DIAGNOSES_ICD
             WHERE SUBJECT_ID IN {tuple(subjects)}
             AND HADM_ID IN {tuple(admissions)}
             ORDER BY HADM_ID
@@ -28,4 +28,11 @@ class AssociationDatabase(DatabaseUtil):
         self.cursor.execute(query)
         return self.cursor.fetchall()
 
+    def fetch_support(self, table):
+        query = f'''
+            SELECT *
+            FROM {self.db}.{table}
+        '''
+        self.cursor.execute(query)
+        return self.cursor.fetchall()
 

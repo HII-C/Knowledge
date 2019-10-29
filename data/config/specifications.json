@@ -2,7 +2,7 @@
     "parameter": {
         "type": "bool,int,float,str",
         "regex": "",
-        "in": [
+        "options": [
 
         ],
         "special": [

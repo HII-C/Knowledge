@@ -1,6 +1,5 @@
 
 import psutil
-
 import pickle
 
 from collections import defaultdict
@@ -21,7 +20,7 @@ class AssociationModel:
 
     @staticmethod
     def validate_config(config):
-        '''validates a configuration file for the fpgrowth module
+        '''validates a configuration file for the association module
         
         Paramaters
         ----------
@@ -77,8 +76,6 @@ class AssociationModel:
                 raise TypeError(f'Parameter "{param}" expected to be of type "'
                     f'{kind.__name__}" but found "{type(config[param]).__name__}".')
 
-        if config['max_events'] < 0:
-            raise ValueError('Parameter "max_events" must be n >= 0.')
         if config['bin_size'] <= 0:
             raise ValueError('Parameter "bin_size" must be n > 0.')
 
@@ -101,11 +98,14 @@ class AssociationModel:
 
         silent = silent if silent is not None else config['silent']
 
+        if config['cached_support'] not in ('', None):
+            del self.database.tables[config['cached_support']]
+
         if config['tree_load_path'] not in ('', None):
             if not silent:
                 pr.print('Loading and unpickling tree from '
                     f'{config["tree_load_path"]}.', time=True)
-            self.fpgrwoth = pickle.load(open(config['tree_load_path'], 'rb'))
+            self.fpgrowth = pickle.load(open(config['tree_load_path'], 'rb'))
 
         else:
             if not silent:
@@ -118,10 +118,18 @@ class AssociationModel:
             population = self.generate_population(config['population'], 
                 config['seed'], silent)
 
-            if not silent:
-                pr.print(f'Calculating itemset support for patient '
-                    'transactions.', time=True)
-            support = self.calculate_support(population, config['bin_size'], silent)
+            if config['cached_support'] not in ('', None):
+                if not silent:
+                    pr.print(f'Calculating itemset support for patient '
+                        'transactions.', time=True)
+                support = self.database.fetch_support(config['cached_support'])
+                
+            else:
+                if not silent:
+                    pr.print(f'Fetching cahced itemset support for patient '
+                        'transactions.', time=True)
+                support = self.calculate_support(population, config['bin_size'], 
+                    silent)
 
             if not silent:
                 pr.print('Starting frequent patterns tree building.', time=True)
@@ -133,6 +141,14 @@ class AssociationModel:
                 pr.print('Pickling and saving tree to '
                     f'{config["tree_save_path"]}.', time=True)
             pickle.dump(self.fpgrowth, open(config['tree_save_path'], 'wb'))
+
+        if not silent:
+            pr.print('Beginning reading frequent patterns from tree.', time=True)
+
+        min_support = int(config['min_support'] * self.fpgrowth.tree.root.count)
+        patterns = self.fpgrowth.find_patterns(min_support, config['max_size'])
+        for pattern in patterns:
+            pass
 
         
     def generate_population(self, pop_size, seed=None, silent=False):
@@ -186,6 +202,7 @@ class AssociationModel:
         items = [(key, val/len(population)) for key, val in support.items()]
 
         if not silent:
+            pr.print(f'Found {len(items)} items in target population.', time=True)
             pr.print(f'Pushing support for {len(support)} items to '
                 'database.', time=True)
 
@@ -204,8 +221,8 @@ class AssociationModel:
             events = self.database.fetch_events(subjects, admissions)
 
             if not silent:
-                pr.print(f'Found {len(events)} events; converting them into'
-                    ' transaction matrix.', time=True)
+                pr.print(f'Retrieved {len(events)} events; appending them'
+                    ' to the tree.', time=True)
             
             transactions = []
             items = set()
@@ -222,23 +239,18 @@ class AssociationModel:
             matrix, items = Fpgrowth.matrix(transactions)
             del transactions
 
-            if not silent:
-                pr.print('Appending matrix data to tree.', time=True)
-
             self.fpgrowth.build_tree(matrix, items, silent)
             del matrix
             del items
 
             if not silent:
                 mem = psutil.virtual_memory().percent
-                size = self.fpgrowth.tree.root.count
-                pr.print(f'Current tree size: {size}.', time=True)
-                pr.print(f'Current memory utilization: {mem}%.', time=True)
+                size = sum(len(n) for n in self.fpgrowth.tree.nodes.values())
+                pr.print(f'Nodes in tree: {size}.', time=True)
+                pr.print(f'Memory usage: {mem}%.', time=True)
 
-
-    def find_patterns(self, min_support):
-        self.fpgrowth.find_patterns(self.fpgrowth.tree, min_support)
-
+    def find_associations(self, min_confidence):
+        pass
     
 
     

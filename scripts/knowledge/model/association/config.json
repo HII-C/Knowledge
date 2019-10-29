@@ -1,16 +1,18 @@
 {
     "": "required parmaters",
+    "max_size": 5,
     "min_support": 0.1,
-    "min_confidence": 0.85,
-    "population": 10000,
-    "bin_size": 100,
+    "min_confidence": 0.90,
+    "population": 1000,
+    "bin_size": 1000,
 
     "": "optional paramters",
     "tree_save_path": "",
     "tree_load_path": "",
+    "patterns_path": "/home/benjamin/Documents/HII-C/data/temp/csv/patterns1.csv",
     "silent": false,
     "force": false,
-    "use_cached_support": false,
+    "cached_support": "",
     "create_idxs": true,
     "seed": 1234,
 
@@ -18,12 +20,12 @@
     "database": {
         "user": "python",
         "host": "localhost",
-        "db": "associations",
+        "db": "APIv1",
         "password": "",
         "tables": {
             "support": {
                 "schema": [
-                    "item_id MEDIUMINT UNSIGNED",
+                    "concept VARCHAR(10)",
                     "support FLOAT"
                 ],
                 "primary_idx": [ "item_id" ],
@@ -48,7 +50,7 @@
                     "antecedent_id MEDIUMINT UNSIGNED",
                     "association_id MEDIUMINT UNSIGNED",
                     "association_idx TINYINT UNSIGNED",
-                    "item_id MEDIUMINT UNSIGNED"
+                    "concept VARCHAR(10)"
                 ],
                 "primary_idx": [ "antecedent_id" ],
                 "btree_idxs": {
@@ -65,7 +67,7 @@
                     "consequent_id MEDIUMINT UNSIGNED",
                     "association_id MEDIUMINT UNSIGNED",
                     "association_idx TINYINT UNSIGNED",
-                    "item_id MEDIUMINT UNSIGNED"
+                    "concept VARCHAR(10)"
                 ],
                 "primary_idx": [ "consequent_id" ],
                 "btree_idxs": {
