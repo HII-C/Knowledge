@@ -1,40 +1,58 @@
 {
-    "": "required parmaters",
-    "max_size": 5,
-    "min_support": 0.1,
-    "min_confidence": 0.90,
-    "population": 1000,
-    "bin_size": 1000,
-
-    "": "optional paramters",
-    "tree_save_path": "",
-    "tree_load_path": "",
-    "patterns_path": "/home/benjamin/Documents/HII-C/data/temp/csv/patterns1.csv",
-    "silent": false,
-    "force": false,
-    "cached_support": "",
-    "create_idxs": true,
-    "seed": 1234,
-
-    "": "database creation structure",
+    "run": {
+        "silent": false,
+        "force": false,
+        "bin": 100,
+        "log": "/home/benjamin/Documents/HII-C/data/temp/log/apiv1_associations.txt"
+    },
+    "population": {
+        "size": 100,
+        "seed": 1234
+    },
+    "items": {
+        "source": [
+            "tests",
+            "conditions",
+            "treatments"
+        ],
+        "min_support": 0.1,
+        "max_support": 0.5
+    },
+    "patterns": {
+        "pickle": "/home/benjamin/Documents/HII-C/data/temp/pickle/apiv1_associations.p",
+        "load": true,
+        "save": false,
+        "min_support": 0.1,
+        "max_support": 0.5,
+        "max_size": 5,
+        "conditions": []
+    },
+    "associations": {
+        "confidence": 0.9,
+        "conviction": 0.7,
+        "lift": 0.8,
+        "support": 0.1
+    },
     "database": {
         "user": "python",
         "host": "localhost",
         "db": "APIv1",
         "password": "",
         "tables": {
-            "support": {
+            "items": {
                 "schema": [
-                    "concept VARCHAR(10)",
+                    "item VARCHAR(15)",
                     "support FLOAT"
                 ],
-                "primary_idx": [ "item_id" ],
+                "primary_idx": [ "item" ],
                 "btree_idxs": {},
                 "hash_idxs": {}
             },
             "associations": {
                 "schema": [
                     "association_id MEDIUMINT UNSIGNED",
+                    "antecedent VARCHAR(255)",
+                    "consequent VARCHAR(255)",
                     "support FLOAT",
                     "confidence FLOAT",
                     "lift FLOAT",
@@ -43,41 +61,10 @@
                 ],
                 "primary_idx": [ "association_id" ],
                 "btree_idxs": {},
-                "hash_idxs": {}
-            },
-            "antecedents": {
-                "schema": [
-                    "antecedent_id MEDIUMINT UNSIGNED",
-                    "association_id MEDIUMINT UNSIGNED",
-                    "association_idx TINYINT UNSIGNED",
-                    "concept VARCHAR(10)"
-                ],
-                "primary_idx": [ "antecedent_id" ],
-                "btree_idxs": {
-                    "association": [
-                        "association_id",
-                        "association_idx"
-                    ], 
-                    "item": [ "item_id" ]
-                },
-                "hash_idxs": {}
-            },
-            "consequents": {
-                "schema": [
-                    "consequent_id MEDIUMINT UNSIGNED",
-                    "association_id MEDIUMINT UNSIGNED",
-                    "association_idx TINYINT UNSIGNED",
-                    "concept VARCHAR(10)"
-                ],
-                "primary_idx": [ "consequent_id" ],
-                "btree_idxs": {
-                    "association": [
-                        "association_id",
-                        "association_idx"
-                    ],
-                    "item": [ "item_id" ]
-                },
-                "hash_idxs": {}
+                "hash_idxs": {
+                    "antecedent": [ "antecedent" ],
+                    "consequent": [ "consequent" ]
+                }
             }
         }
     }

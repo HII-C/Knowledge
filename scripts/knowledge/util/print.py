@@ -10,6 +10,7 @@ class PrintUtil:
     persist_str = ''
     persist_rows = 0
     logfile = None
+    silent = False
     FRMTS = {
         'bold': 1,
         'faint': 2,
@@ -17,6 +18,14 @@ class PrintUtil:
         'underline': 4,
         'strikethrough': 9
     }
+
+    @classmethod
+    def silence(self):
+        self.silent = True
+
+    @classmethod
+    def unsilence(self):
+        self.silence = False
 
     @classmethod
     def log(self, filename):
@@ -118,7 +127,10 @@ class PrintUtil:
 
     @classmethod
     def print(self, string='', persist=False, replace=False, time=False, 
-            progress=None, frmt=None, inquiry=False):
+            progress=None, frmt=None, inquiry=False, force=False):
+        if self.silent and not force:
+            return
+        string = str(string)
         rows, cols = os.popen('stty size', 'r').read().split()
         rows = int(rows)
         cols = int(cols)
@@ -128,7 +140,7 @@ class PrintUtil:
         if progress is not None:
             string = self.progress(string, progress)
         if self.logfile is not None and not persist:
-            self.logfile.write(string)
+            self.logfile.write(string + '\n')
             self.logfile.flush()
         if frmt is not None:
             if type(frmt) is list:

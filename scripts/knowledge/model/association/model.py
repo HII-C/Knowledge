@@ -6,6 +6,7 @@ from collections import defaultdict
 
 from knowledge.model.association.database import AssociationDatabase
 from knowledge.struct.fpgrowth import Fpgrowth
+from knowledge.util.config import ConfigUtil
 from knowledge.util.error import ConfigError, UserExitError
 from knowledge.util.print import PrintUtil as pr
 
@@ -46,40 +47,7 @@ class AssociationModel:
             set of values.
         '''
 
-        required = ('min_support', 'min_confidence', 'population', )
-        types = (float, float, int)
-
-        for param, kind in zip(required, types):
-            if param not in config:
-                raise ConfigError(f'Paramter "{param}" is required.')
-            elif config[param] is None:
-                raise ConfigError(f'Paramter "{param}" is required.')
-            if type(config[param]) is not kind:
-                raise TypeError(f'Parameter "{param}" expected to be of type "'
-                    f'{kind.__name__}" but found "{type(config[param]).__name__}".')
-
-        if config['min_support'] < 0:
-            raise ValueError('Parameter "min_support" must be n >= 0.')
-        if config['min_confidence'] < 0:
-            raise ValueError('Parameter "min_confidence" must be n >= 0.')
-
-        optional = ('silent', 'create_idxs', 'force', 'bin_size')
-        types = (bool, bool, bool, int)
-        defaults = (False, True, False, 100)
-
-        for param, kind, default in zip(optional, types, defaults):
-            if param not in config:
-                config[param] = default
-            elif config[param] is None:
-                config[param] = default
-            elif type(config[param]) is not kind:
-                raise TypeError(f'Parameter "{param}" expected to be of type "'
-                    f'{kind.__name__}" but found "{type(config[param]).__name__}".')
-
-        if config['bin_size'] <= 0:
-            raise ValueError('Parameter "bin_size" must be n > 0.')
-
-        return config
+        pass
 
 
     def run(self, config, silent=None):
@@ -96,95 +64,123 @@ class AssociationModel:
             When prompted, the user chose to exit rather than procede.
         '''
 
-        silent = silent if silent is not None else config['silent']
+        force = config['run']['force']
+        binsize = config['run']['bin']
 
-        if config['cached_support'] not in ('', None):
-            del self.database.tables[config['cached_support']]
+        pr.print('Preallocating tables/files for output.', time=True)
 
-        if config['tree_load_path'] not in ('', None):
-            if not silent:
-                pr.print('Loading and unpickling tree from '
-                    f'{config["tree_load_path"]}.', time=True)
-            self.fpgrowth = pickle.load(open(config['tree_load_path'], 'rb'))
+        if not force and config['patterns']['save']:
+            save = config['patterns']['pickle']
+            
+            if ConfigUtil.file_exists(save):
+                cond = pr.print(f'Patterns tree pickle file "{save}" already '
+                    'exists. Delete and continue? [Y/n] ', inquiry=True, 
+                    time=True, force=True)
+                if not cond:
+                    raise UserExitError('User chose to terminate process.')
 
+        self.create_tables(force)
+
+        if config['patterns']['load']:
+            load = config['patterns']['pickle']
+
+            pr.print(f'Loading pickled patterns tree from {load}.', time=True)
+            self.fpgrowth = pickle.load(open(load, 'rb'))
+            support = self.fpgrowth.support
+            popsize = self.fpgrowth.tree.root.count
+            items = [(key, val/popsize) for key, val in support.items()]
+
+            trans = self.fpgrowth.tree.root.count
+            events = sum(n.count for item in self.fpgrowth.tree.nodes.values()
+                for n in item) - trans
+            nodes = sum(len(item) for item in self.fpgrowth.tree.nodes.values())
+            pr.print(f'Tree complete with {len(items)} items, {trans} transactions, '
+                f'{events} events, and {nodes} nodes.', time=True)
+            
+            pr.print(f'Pushing support for {len(support)} items to '
+                'database.', time=True)
+            self.database.write_rows(items, 'items')
+        
         else:
-            if not silent:
-                pr.print('Defining tables to be populated.', time=True)
-            self.create_tables(config['force'], silent)
+            size = config['population']['size']
+            seed = config['population']['seed']
 
-            if not silent:
-                pr.print(f'Generating population of {config["population"]} '
-                    'patients.', time=True)
-            population = self.generate_population(config['population'], 
-                config['seed'], silent)
+            pr.print(f'Generating sample population of size {size},', time=True)
+            population = self.generate_population(size, seed)
 
-            if config['cached_support'] not in ('', None):
-                if not silent:
-                    pr.print(f'Calculating itemset support for patient '
-                        'transactions.', time=True)
-                support = self.database.fetch_support(config['cached_support'])
-                
-            else:
-                if not silent:
-                    pr.print(f'Fetching cahced itemset support for patient '
-                        'transactions.', time=True)
-                support = self.calculate_support(population, config['bin_size'], 
-                    silent)
+            min_support = config['items']['min_support']
+            max_support = config['items']['max_support']
+            source = config['items']['source']
 
-            if not silent:
-                pr.print('Starting frequent patterns tree building.', time=True)
+            pr.print('First data scan; calculating support for '
+                'population transactions.', time=True)
+            support = self.calculate_support(population, source, min_support,
+                max_support, binsize)
+
+            pr.print('Second data scan; building frequent patterns tree.', time=True)
             self.fpgrowth = Fpgrowth(support)
-            self.build_tree(population, config['bin_size'], silent)
+            self.build_tree(population, source, binsize)
 
-        if config['tree_save_path'] not in ('', None):
-            if not silent:
-                pr.print('Pickling and saving tree to '
-                    f'{config["tree_save_path"]}.', time=True)
-            pickle.dump(self.fpgrowth, open(config['tree_save_path'], 'wb'))
+            items = len(self.fpgrowth.support)
+            trans = self.fpgrowth.tree.root.count
+            events = sum(n.count for item in self.fpgrowth.tree.nodes.values()
+                for n in item) - trans
+            nodes = sum(len(item) for item in self.fpgrowth.tree.nodes.values())
+            pr.print(f'Tree complete with {items} items, {trans} transactions, '
+                f'{events} events, and {nodes} nodes.', time=True)
+            
 
-        if not silent:
-            pr.print('Beginning reading frequent patterns from tree.', time=True)
+        if config['patterns']['save']:
+            save = config['patterns']['pickle']
 
-        min_support = int(config['min_support'] * self.fpgrowth.tree.root.count)
-        patterns = self.fpgrowth.find_patterns(min_support, config['max_size'])
-        for pattern in patterns:
-            pass
+            pr.print(f'Saving pickled patterns tree to {save}.', time=True)
+            pickle.dump(self.fpgrowth, open(save, 'wb'))
+
+        min_support = config['patterns']['min_support']
+        max_support = config['patterns']['max_support']
+        max_size = config['patterns']['max_size']
+
+        pr.print('Beginning reading frequent patterns from tree.', time=True)
+        patterns = self.find_patterns(min_support, max_support, max_size)
+        
+        pr.print('Analyzing patterns for significant associations.', time=True)
+        associations = self.find_associations()
+
+
 
         
-    def generate_population(self, pop_size, seed=None, silent=False):
-        return self.database.fetch_population(pop_size, seed=seed)
+    def generate_population(self, size, seed=None):
+        return self.database.fetch_population(size, seed=seed)
 
 
-    def create_tables(self, force=False, silent=False):
+    def create_tables(self, force=False):
         if not force:
             exists = self.database.table_exists(*list(self.database.tables.keys()))
             tables = '", "'.join(exists)
             if len(exists):
-                term = pr.print(f'Tables "{tables}" already exist in database '
+                cond = pr.print(f'Tables "{tables}" already exist in database '
                     f'"{self.database.db}". Drop and continue? [Y/n] ', 
-                    inquiry=True, time=True)
-                if not term:
+                    inquiry=True, time=True, force=True)
+                if not cond:
                     raise UserExitError('User chose to terminate process.')
         for table in self.database.tables.keys():
             self.database.create_table(table)
         
 
-    def calculate_support(self, population, bin_size, silent=False):
+    def calculate_support(self, population, source, min_support, max_support, binsize):
+        popsize = len(population)
+        min_support = int(min_support * popsize)
+        max_support = int(max_support * popsize)
+
         support = defaultdict(int)
+        for subpop in self.chunk(population, binsize):
+            subjects, admissions = list(map(list, zip(*subpop)))
 
-        for subpopulation in self.chunk(population, bin_size):
-            subjects, admissions = list(map(list, zip(*subpopulation)))
+            pr.print(f'Fetching events for {len(subpop)} transactions.', time=True)
+            events = self.database.fetch_events(source, subjects, admissions)
 
-            if not silent:
-                pr.print(f'Fetching events for {len(subpopulation)}'
-                    ' transactions.', time=True)
-
-            events = self.database.fetch_events(subjects, admissions)
-
-            if not silent:
-                pr.print(f'Calculating and merging support for {len(events)}'
-                    ' events.', time=True)
-
+            pr.print(f'Calculating and merging support for {len(events)} '
+                'events.', time=True)
             items = set()
             hadmid = 0
             count = 0
@@ -199,30 +195,28 @@ class AssociationModel:
 
             del events
 
-        items = [(key, val/len(population)) for key, val in support.items()]
+        items = [(key, val/popsize) for key, val in support.items()
+            if val >= min_support and val <= max_support]
+        support = {key: val for key, val in support.items()
+            if val >= min_support and val <= max_support}
 
-        if not silent:
-            pr.print(f'Found {len(items)} items in target population.', time=True)
-            pr.print(f'Pushing support for {len(support)} items to '
-                'database.', time=True)
-
-        self.database.write_rows(items, 'support')
+        pr.print(f'Found {len(items)} items in target population.', time=True)
+        pr.print(f'Pushing support for {len(items)} items to database.', time=True)
+        self.database.write_rows(items, 'items')
 
         return support
 
         
-    def build_tree(self, population, bin_size, silent=False):
+    def build_tree(self, population, source, bin_size):
         for subpopulation in self.chunk(population, bin_size):
-            if not silent:
-                pr.print(f'Fetching events for {len(subpopulation)}'
-                    ' transactions.', time=True)
+            pr.print(f'Fetching events for {len(subpopulation)}'
+                ' transactions.', time=True)
 
             subjects, admissions = list(map(list, zip(*subpopulation)))
-            events = self.database.fetch_events(subjects, admissions)
+            events = self.database.fetch_events(source, subjects, admissions)
 
-            if not silent:
-                pr.print(f'Retrieved {len(events)} events; appending them'
-                    ' to the tree.', time=True)
+            pr.print(f'Retrieved {len(events)} events; appending them'
+                ' to the tree.', time=True)
             
             transactions = []
             items = set()
@@ -239,18 +233,34 @@ class AssociationModel:
             matrix, items = Fpgrowth.matrix(transactions)
             del transactions
 
-            self.fpgrowth.build_tree(matrix, items, silent)
+            self.fpgrowth.build_tree(matrix, items)
             del matrix
             del items
 
-            if not silent:
-                mem = psutil.virtual_memory().percent
-                size = sum(len(n) for n in self.fpgrowth.tree.nodes.values())
-                pr.print(f'Nodes in tree: {size}.', time=True)
-                pr.print(f'Memory usage: {mem}%.', time=True)
 
-    def find_associations(self, min_confidence):
-        pass
+    def find_patterns(self, min_support, max_support, maz_size):
+        min_support = int(min_support * self.fpgrowth.tree.root.count)
+        max_support = int(max_support * self.fpgrowth.tree.root.count)
+        generator = self.fpgrowth.find_patterns(self.fpgrowth.tree, 
+            min_support, max_support, maz_size)
+
+        count, n = 0, 1
+        for pattern in generator:
+            input(pattern)
+            count += 1
+            if count % n == 0:
+                pr.print(f'Found pattern {count}.', time=True)
+                n = n << 1
+
+        pr.print(f'Found pattern {count}.', time=True)
+
+        return []
+
+
+    def find_associations(self):
+        return []
+        
+
     
 
     

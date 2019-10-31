@@ -15,7 +15,10 @@ class ConfigUtil:
     @staticmethod
     def file_readable(filepath):
         return os.access(filepath, os.R_OK)
-        
+
+    @staticmethod
+    def file_exists(filepath):
+        return os.path.exists(filepath)
 
     @staticmethod
     def file_writable(filepath):

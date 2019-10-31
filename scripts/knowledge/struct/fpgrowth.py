@@ -21,9 +21,6 @@ class Fpgrowth:
     def __init__(self, support):
         self.tree = Tree()
         self.support = support
-
-        #temp
-        self.depth = 0
     
 
     @staticmethod
@@ -109,7 +106,8 @@ class Fpgrowth:
             self.tree.insert_itemset(itemset)
 
 
-    def find_patterns(self, tree, min_support, max_size=0):
+
+    def find_patterns(self, tree, min_support=0, max_support=1, max_size=0):
         '''recursively reads frequent patterns off of tree
         
         Parameters
@@ -125,25 +123,14 @@ class Fpgrowth:
         max_size: int
 
 
-        Returns
-        -------
-
+        Yields
+        ------
+        pattern: Tuple(str, float)
 
         '''
 
-        # pr.print('Finding patterns on subtree.', time=True)
-        # input()
         items = tree.nodes.keys()
         if tree.is_path():
-            # temporary observational process
-            mem = psutil.virtual_memory().percent
-            pr.print('Path branch.', time=True)
-            pr.print(f'Current tree depth: {self.depth}', time=True)
-            pr.print(f'Current tree complexity: ' +
-                str(sum([len(n) for n in self.tree.nodes])), time=True)
-            pr.print(f'Current memory utilization: {mem}%.', time=True)
-            input('Press enter to continue.')
-
             size_remain = len(items) + 1
             if max_size:
                 size_remain = max_size - len(tree.items) + 1
@@ -151,38 +138,16 @@ class Fpgrowth:
                 for itemset in combinations(items, i):
                     support = min([tree.nodes[i][0].count for i in itemset])
                     yield support, tree.items + list(itemset)
-        elif not max_size or max_size >= len(tree.items):
-            # temporary observational process
-            mem = psutil.virtual_memory().percent
-            pr.print('Leaf tree (less than max size).', time=True)
-            pr.print(f'Current tree depth: {self.depth}', time=True)
-            pr.print(f'Current tree complexity: ' +
-                str(sum([len(n) for n in self.tree.nodes.values()])), time=True)
-            pr.print(f'Current memory utilization: {mem}%.', time=True)
-            input('Press enter to continue.')
-            
+        elif not max_size or max_size > len(tree.items):            
             for item in items:
                 support = sum([node.count for node in tree.nodes[item]])
                 yield support, tree.items + [item]
-        else:
+                
             for item in items:
-                subtree = tree.conditional_tree(item, min_support)
-
-                # temporary observational process
-                mem = psutil.virtual_memory().percent
-                pr.print('Recursive call.')
-                pr.print(f'Current tree depth: {self.depth}', time=True)
-                pr.print(f'Current tree complexity: ' +
-                    str(sum([len(n) for n in self.tree.nodes.values()])), time=True)
-                pr.print(f'Current memory utilization: {mem}%.', time=True)
-                input('Press enter to continue.')
-                self.depth += 1
-                self.find_patterns(subtree, min_support, max_size)
-                self.depth -= 1
-
-                # real process
-                # for support, itemset in self.find_patterns(subtree, min_support):
-                #     yield support, itemset
+                subtree = tree.conditional_tree(item, min_support, max_support)
+                for support, itemset in self.find_patterns(subtree, 
+                        min_support, max_support):
+                    yield support, itemset
 
 
 
@@ -222,25 +187,28 @@ class Tree:
             node = child
             
 
-    def conditional_tree(self, item, min_support):
+    def conditional_tree(self, cond, min_support, max_support):
         branches = []
         count = defaultdict(int)
-        for node in self.nodes[item]:
+        for node in self.nodes[cond]:
             branch = node.itempath()
             branches.append(branch)
             for item in branch:
                 count[item] += node.count
-        
-        items = [item for item in count if count[item] >= min_support]
+                
+        items = [item for item in count if count[item] >= min_support
+            and count[item] <= max_support]
         items.sort(key=count.get)
         rank = {item: i for i, item in enumerate(items)}
 
+        
+
         tree = Tree()
-        tree.items = self.items + [item]
+        tree.items = self.items + [cond]
         for idx, branch in enumerate(branches):
             branch = sorted([node for node in branch if node in rank],
                 key=rank.get, reverse=True)
-            tree.insert_itemset(branch, self.nodes[item][idx].count)
+            tree.insert_itemset(branch, self.nodes[cond][idx].count)
 
         return tree
 
@@ -279,8 +247,8 @@ class Node:
     def itempath(self):
         path = []
         parent = self.parent
-        while parent is not None:
+        while parent.item is not None:
             path.append(parent.item)
-            parent = self.parent
+            parent = parent.parent
         path.reverse()
         return path

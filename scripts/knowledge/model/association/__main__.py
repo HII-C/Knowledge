@@ -1,5 +1,6 @@
 
 import json
+import sys
 
 from getpass import getpass
 from pkg_resources import resource_filename
@@ -7,6 +8,8 @@ from argparse import ArgumentParser
 
 from knowledge.util.print import PrintUtil as pr
 from knowledge.model.association.model import AssociationModel
+
+sys.setrecursionlimit(10000)
 
 parser = ArgumentParser(prog='association model runner',
     description='run an association building model')
@@ -29,11 +32,16 @@ except FileExistsError as err:
         'terminating model run.', time=True)
     raise err
 except json.JSONDecodeError as err:
-    pr.print(f'ERROR: Config file {args.config} is not valid json; '
+    pr.print(f'Config file {args.config} is not valid json; '
         'terminating model run.', time=True)
     raise err
 
-config = AssociationModel.validate_config(config)
+
+if config['run']['silent']:
+    pr.silence()
+
+if config['run']['log']:
+    pr.log(config['run']['log'])
 
 database = config['database']
 database['password'] = getpass(

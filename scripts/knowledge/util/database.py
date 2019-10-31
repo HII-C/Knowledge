@@ -23,8 +23,9 @@ class DatabaseUtil:
                 self.cursor = self.connection.cursor()
             except MySQLdb._exceptions.OperationalError as err:
                 if err.args[0] == 1049:
-                    term = pr.print(f'Database "{self.db}" does not exist. Create',
-                        ' and continue? [Y/n] ', time=True, inquiry=True)
+                    term = pr.print(f'Database "{self.db}" does not exist. Create '
+                        'and continue? [Y/n] ', time=True, 
+                        inquiry=True, force=True)
                     if term:
                         del login['db']
                         connection = MySQLdb.connect(**login)
