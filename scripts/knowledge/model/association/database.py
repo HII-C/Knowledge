@@ -15,6 +15,7 @@ class AssociationDatabase(DatabaseUtil):
         self.cursor.execute(query)
         return self.cursor.fetchall()
 
+
     def fetch_events(self, source, subjects, admissions):
         subquery = {}
         subquery['tests'] = f'''
@@ -44,6 +45,7 @@ class AssociationDatabase(DatabaseUtil):
         self.cursor.execute(query)
         return self.cursor.fetchall()
 
+
     def fetch_support(self, table):
         query = f'''
             SELECT *
@@ -51,4 +53,3 @@ class AssociationDatabase(DatabaseUtil):
         '''
         self.cursor.execute(query)
         return self.cursor.fetchall()
-

@@ -3,6 +3,7 @@ import psutil
 import pickle
 
 from collections import defaultdict
+from itertools import combinations
 
 from knowledge.model.association.database import AssociationDatabase
 from knowledge.struct.fpgrowth import Fpgrowth
@@ -84,7 +85,7 @@ class AssociationModel:
         if config['patterns']['load']:
             load = config['patterns']['pickle']
 
-            pr.print(f'Loading pickled patterns tree from {load}.', time=True)
+            pr.print(f'Loading pickled patterns tree from "{load}".', time=True)
             self.fpgrowth = pickle.load(open(load, 'rb'))
             support = self.fpgrowth.support
             popsize = self.fpgrowth.tree.root.count
@@ -107,6 +108,7 @@ class AssociationModel:
 
             pr.print(f'Generating sample population of size {size},', time=True)
             population = self.generate_population(size, seed)
+            popsize = len(population)
 
             min_support = config['items']['min_support']
             max_support = config['items']['max_support']
@@ -142,15 +144,33 @@ class AssociationModel:
 
         pr.print('Beginning reading frequent patterns from tree.', time=True)
         patterns = self.find_patterns(min_support, max_support, max_size)
-        
+        del self.fpgrowth
+
         pr.print('Analyzing patterns for significant associations.', time=True)
-        associations = self.find_associations()
+        conditions = config['associations']
+        associations = self.find_associations(patterns, conditions, popsize)
+        del patterns
 
+        pr.print('Pushing associations to database.', time=True)
+        self.database.write_rows(associations, 'associations')
+        del associations
 
+        index = config['run']['index']
+        if index:
+            pr.print('Creating indexes on all new tables.', time=True)
+            for table in self.database.tables.keys():
+                self.database.create_all_idxs(table)
+
+        pr.print('Assoication model run complete.', time=True)
 
         
     def generate_population(self, size, seed=None):
-        return self.database.fetch_population(size, seed=seed)
+        population = self.database.fetch_population(size, seed=seed)
+        popsize = len(population)
+        if size > popsize:
+            pr.print(f'Requested population size of {size} but only '
+                f'found a max of {size} admissions.', time=True)
+        return population
 
 
     def create_tables(self, force=False):
@@ -192,7 +212,6 @@ class AssociationModel:
                     items = set()
                     count += 1
                 items.add(event[1])
-
             del events
 
         items = [(key, val/popsize) for key, val in support.items()
@@ -241,27 +260,71 @@ class AssociationModel:
     def find_patterns(self, min_support, max_support, maz_size):
         min_support = int(min_support * self.fpgrowth.tree.root.count)
         max_support = int(max_support * self.fpgrowth.tree.root.count)
+
+        patterns = []
         generator = self.fpgrowth.find_patterns(self.fpgrowth.tree, 
             min_support, max_support, maz_size)
 
         count, n = 0, 1
         for pattern in generator:
-            input(pattern)
+            patterns.append(pattern)
             count += 1
-            if count % n == 0:
+            if count == n:
                 pr.print(f'Found pattern {count}.', time=True)
                 n = n << 1
 
-        pr.print(f'Found pattern {count}.', time=True)
+        if count != n >> 1:
+            pr.print(f'Found pattern {count}.', time=True)
 
-        return []
+        return patterns
 
 
-    def find_associations(self):
-        return []
-        
+    def find_associations(self, patterns, conds, popsize):
+        inf = float('inf')
+        metrics = {
+            'support':    lambda sAC, sA, sC: sAC,
+            'confidence': lambda sAC, sA, sC: sAC/sA,
+            'lift':       lambda sAC, sA, sC: sAC/sA/sC,
+            'leverage':   lambda sAC, sA, sC: sAC-sA*sC,
+            'conviction': lambda sAC, sA, sC: (1-sC)/(1-sAC/sA) if sAC != sA else inf,
+            'rpf':        lambda sAC, sA, sC: sAC*sAC/sA
+        }
 
-    
+        pattern_dict = {frozenset(p[1]): p[0] / popsize for p in patterns}
+        associations = []
+        count, n = 0, 1
 
-    
+        for pattern in pattern_dict.keys():
+            sAC = pattern_dict[pattern]
+            for idx in range(len(pattern)-1,0,-1):
+                for subset in combinations(pattern, r=idx):
+                    antecedent = frozenset(subset)
+                    consequent = pattern - antecedent
 
+                    sA = pattern_dict[antecedent]
+                    sC = pattern_dict[consequent]
+
+                    score = all(metrics[metric](sAC, sA, sC) >= cond 
+                        for metric, cond in conds.items())
+
+                    if score:
+                        associations.append((
+                            count,
+                            ','.join(sorted(antecedent)),
+                            ','.join(sorted(consequent)),
+                            metrics['support'](sAC, sA, sC),
+                            metrics['confidence'](sAC, sA, sC),
+                            metrics['lift'](sAC, sA, sC),
+                            metrics['leverage'](sAC, sA, sC),
+                            metrics['conviction'](sAC, sA, sC) if sAC != sA else None,
+                            metrics['rpf'](sAC, sA, sC)))
+                        count += 1
+
+                        if count == n:
+                            pr.print(f'Found association {count}.', time=True)
+                            n = n << 1
+
+        if count != n >> 1:
+            pr.print(f'Found association {count}.', time=True)
+
+        return associations

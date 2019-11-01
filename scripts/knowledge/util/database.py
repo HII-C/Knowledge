@@ -105,26 +105,25 @@ class DatabaseUtil:
         self.cursor.execute(query)
         self.connection.commit()
     
-    def create_all_idxs(self, table, silent=False):
+    def create_all_idxs(self, table):
         tbl_data = self.tables[table]
         if 'primary_idx' in tbl_data:
-            if not silent:
-                pr.print(f'Creating primary index on table "{table}".', time=True)
-                self.create_primary_idx(table)
+            pr.print(f'Creating primary index on table "{table}".', time=True)
+            self.create_primary_idx(table)
         if 'spatial_idxs' in tbl_data:
             for idx in tbl_data['spatial_idxs']:
-                if not silent:
-                    pr.print(f'Creating spatial index "{idx}" on table "{table}".', time=True)
+                pr.print(f'Creating spatial index "{idx}" on '
+                    f'table "{table}".', time=True)
                 self.create_spatial_idx(table, idx)
         if 'hash_idxs' in tbl_data:
             for idx in tbl_data['hash_idxs']:
-                if not silent:
-                    pr.print(f'Creating hash index "{idx}" on table "{table}".', time=True)
+                pr.print(f'Creating hash index "{idx}" on '
+                    f'table "{table}".', time=True)
                 self.create_hash_idx(table, idx)
         if 'btree_idxs' in tbl_data:
             for idx in tbl_data['btree_idxs']:
-                if not silent:
-                    pr.print(f'Creating btree index "{idx}" on table "{table}".', time=True)
+                pr.print(f'Creating btree index "{idx}" on '
+                    f'table "{table}".', time=True)
                 self.create_btree_idx(table, idx)
 
     def write_rows(self, data, table):

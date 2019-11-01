@@ -126,7 +126,6 @@ class Fpgrowth:
         Yields
         ------
         pattern: Tuple(str, float)
-
         '''
 
         items = tree.nodes.keys()
@@ -150,7 +149,6 @@ class Fpgrowth:
                     yield support, itemset
 
 
-
 class Tree:
     '''a tree structure with variable length, unordered children
 
@@ -158,7 +156,6 @@ class Tree:
     ----------
     root: str/int/float = None
         The value of the root node; default is None.
-
     '''
 
     def __init__(self, root=None):
@@ -220,7 +217,6 @@ class Tree:
         return len(node.children) == 0
 
 
-
 class Node:
     '''an element in a tree structure
 
@@ -234,7 +230,6 @@ class Node:
 
     parent: Node = None
         The parent node of the node being constructed; default is None type.
-
     '''
 
     def __init__(self, item, count=1, parent=None):

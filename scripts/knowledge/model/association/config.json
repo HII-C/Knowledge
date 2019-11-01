@@ -2,11 +2,12 @@
     "run": {
         "silent": false,
         "force": false,
-        "bin": 100,
+        "index": true,
+        "bin": 1000,
         "log": "/home/benjamin/Documents/HII-C/data/temp/log/apiv1_associations.txt"
     },
     "population": {
-        "size": 100,
+        "size": 100000,
         "seed": 1234
     },
     "items": {
@@ -16,22 +17,18 @@
             "treatments"
         ],
         "min_support": 0.1,
-        "max_support": 0.5
+        "max_support": 0.7
     },
     "patterns": {
         "pickle": "/home/benjamin/Documents/HII-C/data/temp/pickle/apiv1_associations.p",
-        "load": true,
-        "save": false,
+        "load": false,
+        "save": true,
         "min_support": 0.1,
-        "max_support": 0.5,
-        "max_size": 5,
-        "conditions": []
+        "max_support": 0.7,
+        "max_size": 5
     },
     "associations": {
-        "confidence": 0.9,
-        "conviction": 0.7,
-        "lift": 0.8,
-        "support": 0.1
+        "confidence": 0.9
     },
     "database": {
         "user": "python",
@@ -57,7 +54,8 @@
                     "confidence FLOAT",
                     "lift FLOAT",
                     "leverage FLOAT",
-                    "conviction FLOAT"
+                    "conviction FLOAT",
+                    "rpf FLOAT"
                 ],
                 "primary_idx": [ "association_id" ],
                 "btree_idxs": {},

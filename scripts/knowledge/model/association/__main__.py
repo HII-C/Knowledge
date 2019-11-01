@@ -28,14 +28,13 @@ try:
     with open(args.config) as handle:
         config = json.load(handle)
 except FileExistsError as err:
-    pr.print(f'Config file {args.config} does not exist; '
+    pr.print(f'Config file "{args.config}" does not exist; '
         'terminating model run.', time=True)
     raise err
 except json.JSONDecodeError as err:
-    pr.print(f'Config file {args.config} is not valid json; '
+    pr.print(f'Config file "{args.config}" is not valid json; '
         'terminating model run.', time=True)
     raise err
-
 
 if config['run']['silent']:
     pr.silence()
