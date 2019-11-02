@@ -1,2 +1,3 @@
 include README.md
 include scripts/knowledge/*/*/config.json
+include scripts/knowledge/*/*/specs.json

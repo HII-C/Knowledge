@@ -8,21 +8,31 @@ from knowledge.util.print import PrintUtil as pr
 
 
 class ConfigUtil:
+    '''static class used to verify config to specs for runner
+
+    also includes some useful tools for handling config parameters
     '''
 
-    '''
+    types = {'str': str, 'int': int, 'bool': bool, 'dict': dict,
+        'list': list, 'float': float, 'null': None}
 
-    @staticmethod
-    def file_readable(filepath):
+
+    @classmethod
+    def file_readable(self, filepath):
+        'check that file can be read'
         return os.access(filepath, os.R_OK)
 
-    @staticmethod
-    def file_exists(filepath):
-        return os.path.exists(filepath)
 
-    @staticmethod
-    def file_writable(filepath):
-        if os.path.exists(filepath):
+    @classmethod
+    def file_exists(self, filepath):
+        'check that file exists'
+        return os.path.exists(filepath)
+    
+
+    @classmethod
+    def file_writable(self, filepath):
+        'check that file is writable'
+        if self.file_exists(filepath):
             if os.path.isfile(filepath):
                 return os.access(filepath, os.W_OK)
             else:
@@ -34,8 +44,9 @@ class ConfigUtil:
         return os.access(pdir, os.W_OK)
 
 
-    @staticmethod
-    def load_config(filepath):
+    @classmethod
+    def load_config(self, filepath):
+        'load a config file; catches file and JSON errors'
         try:
             with open(filepath) as handle:
                 return json.load(handle)
@@ -48,61 +59,141 @@ class ConfigUtil:
                 'terminating model run.', time=True)
             raise err
 
+    @classmethod
+    def load_specs(self, filepath):
+        'load a config file; catches file and JSON errors'
+        try:
+            with open(filepath) as handle:
+                return json.load(handle)
+        except FileExistsError as err:
+            pr.print(f'Specs file "{filepath}" does not exist; '
+                'terminating model run.', time=True)
+            raise err
+        except json.JSONDecodeError as err:
+            pr.print(f'Specs file "{filepath}" is not valid json; '
+                'terminating model run.', time=True)
+            raise err
+
 
     @classmethod
-    def verify_config(self, config, specspath, convert=False):
-        with open(specspath) as handle:
-            specs = json.load(handle)
-        
-        for name, spec in specs.values():
-            config[name] = self.verify_spec(config, spec, name)
+    def verify_config(self, specs, config, name=''):
+        '''recursively validates a specifications dict to a configuration dict
 
-        return config
-    
-    
-    @classmethod
-    def verify_spec(self, config, spec, name):
-        if name in config:
-            attr = config[name]
-            all_types = {'dict': str, 'int': int, 'bool': bool, 'float': float}
-            valid_types = [all_types[a] for a in spec['type'].split(',')]
+        Parameters
+        ----------
+        specs: dict
+            The dict representing a JSON specifications file.
 
-            if type(attr) not in valid_types:
-                raise TypeError(f'Parameter "{name}" expected to be of type "'
-                    f'{spec["type"]}" but found "{type(attr).__name__}".')
+        config: dict
+            The dict representing a JSON configurations file; will be checked
+            against the specifications file.
 
-            if 'options' in spec and len(spec['options']) and attr not in spec['options']:
-                options = ', '.join([f'"{str(opt)}"' for opt in spec['options']])
-                raise ValueError(f'Parameter "{name}" expected to be {options} '
-                    f'but found "{attr}".')
+        Returns
+        -------
+        config: dict
+            A new dict representing the JSON configuration file with any missing
+            default values added onto it.
+        '''
 
-            if 'min' in spec and attr < spec['min']:
-                raise ValueError(f'Parameter "{name}" expected to be greater than '
-                    f'{spec["min"]} but found {attr}.')
-
-            if 'max' in spec and attr > spec['max']:
-                raise ValueError(f'Parameter "{name}" expected to be less than '
-                    f'{spec["max"]} but found {attr}.')
-
-            if 'regex' in spec and not re.search(spec['regex'], attr):
-                raise ValueError (f'Parameter "{name}" expected to match pattern '
-                    f'{spec["regex"]} but found "{attr}".')
-            
-            if 'special' in spec and len(spec['special']):
-                for prop in spec['special']:
-                    if prop == 'checkFileReadable' and not self.file_readable(attr):
-                        raise FileNotFoundError(f'Parameter "{name}" needs to be a '
-                            f'path to a readable file; "{attr}" was not.')
-                    elif prop == 'checkFileWritable' and not self.file_writable(attr):
-                        raise FileNotFoundError(f'Parameter "{name}" needs to be a '
-                            f'path to a writable file; "{attr}" was not.')
-
-            return attr
-
-        elif 'required' not in spec or not spec['required']:
-            if 'default' in spec:
-                return spec['default']
+        for attr, spec in specs.items():
+            param = config[attr] if attr in config else None
+            if type(attr) is int:
+                path = f'{name}[{attr}]' if name != '' else attr
             else:
-                return None
-        else:
-            raise ConfigError(f'Parameter "{name}" is required.')
+                path = f'{name}.{attr}' if name != '' else attr
+
+            if type(spec) is not dict:
+                config[attr] = spec
+            elif 'type' in spec:
+                if param is None:
+                    if 'required' not in spec or not spec['required']:
+                        config[attr] = spec['default'] if 'default' in spec else None
+                        continue
+                    else:
+                        raise ConfigError(f'Parameter "{attr}" is required.')
+
+                if spec['type'] == 'dict':
+                    if type(param) == dict:
+                        if 'min' in spec and spec['min'] > len(param):
+                            raise ValueError(f'Parameter "{path}" expected to have at '
+                                f'least {spec["min"]} elements but only found '
+                                f'{len(param)}.')
+                        if 'max' in spec and spec['max'] < len(param):
+                            raise ValueError(f'Parameter "{path}" expected to have at '
+                                f'most {spec["max"]} elements but found '
+                                f'{len(param)}.')
+                        if 'options' in spec and not all(k in spec['options'] 
+                                for k in param.keys()):
+                            valid = '","'.join(spec['options'])
+                            invalid = '","'.join(k for k in param.keys() if 
+                                k not in spec['options'])
+                            raise ValueError(f'Parameter "{path}" expected to only '
+                                f'"{valid}" for keys but found "{invalid}".')
+                        if 'struct' in spec:
+                            spec = {k: spec['struct'] for k in param.keys()}
+                            config[attr] = self.verify_config(spec, param, name=path)
+                    else:
+                        raise TypeError(f'Parameter "{path}" expected to be of type '
+                            f'"dict" but found "{type(param).__name__}".')
+                elif spec['type'] == 'list':
+                    if type(param) == list:
+                        if 'min' in spec and spec['min'] > len(param):
+                            raise ValueError(f'Parameter "{path}" expected to have at '
+                                f'least {spec["min"]} elements but only found '
+                                f'{len(param)}.')
+                        if 'max' in spec and spec['max'] < len(param):
+                            raise ValueError(f'Parameter "{path}" expected to have at '
+                                f'most {spec["max"]} elements but found '
+                                f'{len(param)}.')
+                        if 'struct' in spec:
+                            spec = {k: spec['struct'] for k in range(len(param))}
+                            config[attr] = self.verify_config(spec,
+                                dict(enumerate(param)), name=path).values()
+                    else:
+                        raise TypeError(f'Parameter "{path}" expected to be of type '
+                            f'"list" but found "{type(param).__name__}".')
+                else:
+                    self.verify_param(path, spec, param)
+            else:
+                config[attr] = self.verify_config(spec, param, name=path)
+        
+        return config
+
+    
+    @classmethod
+    def verify_param(self, name, spec, param):
+        types = [self.types[t] for t in spec['type'].split(',')]
+
+        if type(param) not in types:
+            types = '", "'.join(spec['type'].split(','))
+            raise TypeError(f'Parameter "{name}" expected to be of type "'
+                f'{types}" but found "{type(param).__name__}".')
+
+        if 'options' in spec and len(spec['options']) and param not in spec['options']:
+            options = ', '.join([f'"{str(opt)}"' for opt in spec['options']])
+            raise ValueError(f'Parameter "{name}" expected to be {options} '
+                f'but found "{param}".')
+
+        if 'exceptions' in spec and param in spec['exceptions']:
+            raise ValueError(f'Parameter "{name}" cannot be "{param}".')
+
+        if 'min' in spec and param < spec['min']:
+            raise ValueError(f'Parameter "{name}" expected to be greater than '
+                f'{spec["min"]} but found {name}.')
+
+        if 'max' in spec and param > spec['max']:
+            raise ValueError(f'Parameter "{name}" expected to be less than '
+                f'{spec["max"]} but found {param}.')
+
+        if 'regex' in spec and not re.search(spec['regex'], param):
+            raise ValueError (f'Parameter "{name}" expected to match pattern '
+                f'{spec["regex"]} but found "{param}".')
+
+        # TODO complete error handling
+        if 'file' in spec:
+            if spec['file'] == 'exists' and not self.file_exists(param):
+                raise ValueError()
+            elif spec['file'] == 'readable' and not self.file_readable(param):
+                raise ValueError()
+            elif spec['file'] == 'writable' and not self.file_writable(param):
+                raise ValueError()

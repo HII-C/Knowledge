@@ -22,32 +22,7 @@ class AssociationModel:
 
     @staticmethod
     def validate_config(config):
-        '''validates a configuration file for the association module
-        
-        Paramaters
-        ----------
-        config: dict
-            A dictionary representation of the JSON config file.
-            See documentation for specifications of the config file.
-        
-        Returns
-        -------
-        cleanded_config: dict
-            The cleaned config, which includes all optional paramters
-            not spefiied in the input config with thier default values.
-            This cleaned config can be used to run the model.
-
-        Throws
-        ------
-        ConfigError
-            A required paramater in the config is missing.
-        TypeError
-            A parameter in the config is not of the correct type.
-        ValueError
-            A paramter in the config is out of range of the allowed
-            set of values.
-        '''
-
+        'validates a configuration file for the association model'
         pass
 
 

@@ -4,10 +4,10 @@
         "force": false,
         "index": true,
         "bin": 1000,
-        "log": "/home/benjamin/Documents/HII-C/data/temp/log/apiv1_associations.txt"
+        "log": "/home/benjamin/Documents/HII-C/data/temp/log/assoications.txt"
     },
     "population": {
-        "size": 100000,
+        "size": 1000,
         "seed": 1234
     },
     "items": {
@@ -16,15 +16,15 @@
             "conditions",
             "treatments"
         ],
-        "min_support": 0.1,
-        "max_support": 0.7
+        "min_support": 0.05,
+        "max_support": 0.25
     },
     "patterns": {
-        "pickle": "/home/benjamin/Documents/HII-C/data/temp/pickle/apiv1_associations.p",
+        "pickle": "/home/benjamin/Documents/HII-C/data/temp/pickle/infrequent_tree.p",
         "load": false,
         "save": true,
-        "min_support": 0.1,
-        "max_support": 0.7,
+        "min_support": 0.05,
+        "max_support": 0.25,
         "max_size": 5
     },
     "associations": {
@@ -55,7 +55,8 @@
                     "lift FLOAT",
                     "leverage FLOAT",
                     "conviction FLOAT",
-                    "rpf FLOAT"
+                    "rpf FLOAT",
+                    1
                 ],
                 "primary_idx": [ "association_id" ],
                 "btree_idxs": {},

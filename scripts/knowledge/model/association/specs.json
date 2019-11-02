@@ -1,0 +1,219 @@
+{
+    "run": {
+        "silent": {
+            "type": "bool",
+            "description": "choose to run model without verbose output",
+            "required": false,
+            "default": false
+        },
+        "force": {
+            "type": "bool",
+            "description": "choose to force file/table changes; no prompting",
+            "required": false,
+            "default": false
+        },
+        "index": {
+            "type": "bool",
+            "description": "create specified indexes on new tables after run complete",
+            "required": false,
+            "default": false
+        },
+        "bin": {
+            "type": "int",
+            "description": "bin size for fetching items from database",
+            "required": false,
+            "default": 1000,
+            "min": 1
+        },
+        "log": {
+            "type": "str",
+            "description": "path to where to save log output for model run",
+            "required": false
+        }
+    },
+    "population": {
+        "size": {
+            "type": "int",
+            "description": "size of population to generate",
+            "required": true,
+            "min": 1
+        },
+        "seed": {
+            "type": "int",
+            "description": "seed for random population generation; use null for no seed",
+            "required": false,
+            "default": null,
+            "min": 0
+        }
+    },
+    "items": {
+        "source": {
+            "type": "list",
+            "descripton": "list of sources to pull data from for model",
+            "required": true,
+            "struct": {
+                "type": "str",
+                "description": "a source to pull data from for model",
+                "options": [
+                    "tests",
+                    "conditions",
+                    "treatments"
+                ]
+            },
+            "min": 1,
+            "max": 3
+        },
+        "min_support": {
+            "type": "float",
+            "description": "minimum frequency of item to be kept as part of model",
+            "required": false,
+            "default": 0.0,
+            "min": 0.0,
+            "max": 1.0
+        },
+        "max_support": {
+            "type": "float",
+            "description": "maximum frequency of item to be kept as part of model",
+            "required": false,
+            "default": 1.0,
+            "min": 0.0,
+            "max": 1.0
+        }
+    },
+    "patterns": {
+        "pickle": {
+            "type": "str",
+            "description": "path to where tree pickle will be saved to or loaded from",
+            "required": false
+        },
+        "load": {
+            "type": "bool",
+            "description": "choose to load pickled tree from path",
+            "required": false,
+            "default": false
+        },
+        "save": {
+            "type": "bool",
+            "description": "choose to save pickled tree to path",
+            "required": false,
+            "default": false
+        },
+        "min_support": {
+            "type": "float",
+            "required": false,
+            "default": 0.0,
+            "min": 0.0,
+            "max": 1.0
+        },
+        "max_support": {
+            "type": "float",
+            "required": false,
+            "default": 1.0,
+            "min": 0.0,
+            "max": 1.0
+        },
+        "max_size": {
+            "type": "int",
+            "required": true,
+            "min": 1
+        }
+    },
+    "associations": {
+        "type": "dict",
+        "description": "list of metrics to check associations against",
+        "required": true,
+        "struct": {
+            "type": "float",
+            "description": "",
+            "min": 0.0,
+            "max": 1.0
+        },
+        "options": [
+            "confidence",
+            "support",
+            "lift",
+            "leverage"
+        ],
+        "min": 1,
+        "max": 4
+    },
+    "database": {
+        "user": {
+            "type": "str",
+            "description": "mysql user name",
+            "required": true
+        },
+        "host": {
+            "type": "str",
+            "description": "mysql host name",
+            "required": true
+        },
+        "db": {
+            "type": "str",
+            "description": "mysql database name",
+            "required": true
+        },
+        "password": {
+            "type": "str",
+            "description": "mysql password",
+            "required": false
+        },
+        "sock": {
+            "type": "str",
+            "description": "mysql connection socket",
+            "required": false
+        },
+        "tables": {
+            "type": "dict",
+            "description": "dictionary of tables that will be made in model run",
+            "struct": {
+                "schema": {
+                    "type": "list",
+                    "description": "schema for the table",
+                    "required": true,
+                    "struct": {
+                        "type": "str",
+                        "description": "info for one column of table schema"
+                    }
+                },
+                "primary_idx": {
+                    "type": "list",
+                    "description": "primary index for table",
+                    "required": false,
+                    "struct": {
+                        "type": "str",
+                        "description": "a column in the primary index"
+                    }
+                },
+                "btree_idxs": {
+                    "type": "dict",
+                    "description": "list of binary tree indexes for the table",
+                    "required": false,
+                    "struct": {
+                        "type": "list",
+                        "description": "a binary tree index for the table",
+                        "struct": {
+                            "type": "str",
+                            "description": "a column in a binary index"
+                        }
+                    }
+                },
+                "hash_idxs": {
+                    "type": "dict",
+                    "description": "list of hash table indexes for the table",
+                    "required": false,
+                    "struct": {
+                        "type": "list",
+                        "description": "a hash table index for the table",
+                        "struct": {
+                            "type": "str",
+                            "description": "a column in a hash index"
+                        }
+                    }
+                }
+            },
+            "required": false
+        }
+
+    }
+}
