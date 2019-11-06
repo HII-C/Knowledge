@@ -7,7 +7,7 @@ import numpy as np
 from collections import defaultdict
 from itertools import combinations
 
-from knowledge.util.print import PrintUtil as pr
+from association.print import PrintUtil as pr
 
 class Fpgrowth:
     '''data structure and utilities for running fpgrowth algorithm

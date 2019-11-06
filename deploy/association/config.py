@@ -3,8 +3,8 @@ import json
 import re
 import os
 
-from knowledge.util.error import ConfigError
-from knowledge.util.print import PrintUtil as pr
+from association.error import ConfigError
+from association.print import PrintUtil as pr
 
 
 class ConfigUtil:

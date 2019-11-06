@@ -18,17 +18,17 @@ class AssociationDatabase(DatabaseUtil):
 
     def fetch_events(self, source, subjects, admissions):
         subquery = {}
-        subquery['tests'] = f'''
+        subquery['observations'] = f'''
             SELECT
                 HADM_ID,
-                CONCAT("L-", ITEMID)
+                CONCAT("O-", ITEMID)
             FROM mimiciiiv14.LABEVENTS
             WHERE SUBJECT_ID IN {tuple(subjects)}
             AND HADM_ID IN {tuple(admissions)} '''
         subquery['conditions'] = f'''
             SELECT
                 HADM_ID,
-                CONCAT("D-", ICD9_CODE)
+                CONCAT("C-", ICD9_CODE)
             FROM mimiciiiv14.DIAGNOSES_ICD
             WHERE SUBJECT_ID IN {tuple(subjects)}
             AND HADM_ID IN {tuple(admissions)} '''

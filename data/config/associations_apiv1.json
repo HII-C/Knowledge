@@ -4,10 +4,10 @@
         "force": false,
         "index": true,
         "bin": 1000,
-        "log": ""
+        "log": "/home/benjamin/Documents/HII-C/data/temp/log/associations_apiv1.txt"
     },
     "population": {
-        "size": 1000,
+        "size": 10000,
         "seed": 1234
     },
     "items": {
@@ -16,22 +16,23 @@
             "conditions",
             "treatments"
         ],
-        "min_support": 0.01,
+        "min_support": 0.025,
         "max_support": 0.3
     },
     "patterns": {
-        "pickle": "",
+        "pickle": "/home/benjamin/Documents/HII-C/data/temp/pickle/associations_apiv1.p",
         "load": true,
         "save": false,
-        "min_support": 0.05,
-        "max_support": 0.5,
+        "min_support": 0.025,
+        "max_support": 0.3,
         "max_size": 5
     },
     "associations": {
-        "confidence": 0.9
+        "confidence": 0.95,
+        "support": 0.01
     },
     "database": {
-        "user": "knowledge",
+        "user": "python",
         "host": "localhost",
         "db": "APIv1",
         "password": "",
@@ -41,9 +42,11 @@
                     "item VARCHAR(15)",
                     "support FLOAT"
                 ],
-                "primary_idx": [ "item" ],
+                "primary_idx": [],
                 "btree_idxs": {},
-                "hash_idxs": {}
+                "hash_idxs": {
+                    "item": [ "item" ]
+                }
             },
             "associations": {
                 "schema": [

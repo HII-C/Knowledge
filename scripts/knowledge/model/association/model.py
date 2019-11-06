@@ -4,6 +4,7 @@ import pickle
 
 from collections import defaultdict
 from itertools import combinations
+from pkg_resources import resource_filename
 
 from knowledge.model.association.database import AssociationDatabase
 from knowledge.struct.fpgrowth import Fpgrowth
@@ -14,6 +15,7 @@ from knowledge.util.print import PrintUtil as pr
 class AssociationModel:
     def __init__(self, database):
         self.database = AssociationDatabase(database)
+        self.fpgrowth = None
 
     @staticmethod
     def chunk(arr, n):
@@ -21,9 +23,32 @@ class AssociationModel:
             yield arr[i: i+n]
 
     @staticmethod
-    def validate_config(config):
+    def validate_config(filepath):
         'validates a configuration file for the association model'
-        pass
+
+        config = ConfigUtil.load_config(filepath)
+        specs = ConfigUtil.load_specs(resource_filename('knowledge', 
+            'model/association/specs.json'))
+        config = ConfigUtil.verify_config(specs, config)
+
+        patterns = config['patterns']            
+        if patterns['load']:
+            if patterns['pickle'] is None:
+                raise ConfigError('Pickled tree path must be given to'
+                    'load pickled tree.')
+            if not ConfigUtil.file_readable(patterns['pickle']):
+                raise FileNotFoundError('Pickled tree path must be a '
+                    'path to a readable file.')
+        if patterns['save']:
+            if patterns['pickle'] is None:
+                raise ConfigError('Pickled tree path must be given to'
+                    'save pickled tree.')
+            if not ConfigUtil.file_writable(patterns['pickle']):
+                raise FileNotFoundError('Pickled tree path must be a '
+                    'path to a writable file or directory.')
+
+        return config
+
 
 
     def run(self, config, silent=None):
@@ -42,12 +67,16 @@ class AssociationModel:
 
         force = config['run']['force']
         binsize = config['run']['bin']
+        count = config['run']['count']
+
+        if count is not None:
+            del self.database.tables['items']
+            del self.database.tables['associations']
 
         pr.print('Preallocating tables/files for output.', time=True)
 
         if not force and config['patterns']['save']:
             save = config['patterns']['pickle']
-            
             if ConfigUtil.file_exists(save):
                 cond = pr.print(f'Patterns tree pickle file "{save}" already '
                     'exists. Delete and continue? [Y/n] ', inquiry=True, 
@@ -73,9 +102,10 @@ class AssociationModel:
             pr.print(f'Tree complete with {len(items)} items, {trans} transactions, '
                 f'{events} events, and {nodes} nodes.', time=True)
             
-            pr.print(f'Pushing support for {len(support)} items to '
-                'database.', time=True)
-            self.database.write_rows(items, 'items')
+            if count is not None:
+                pr.print(f'Pushing support for {len(support)} items to '
+                    'database.', time=True)
+                self.database.write_rows(items, 'items')
         
         else:
             size = config['population']['size']
@@ -92,7 +122,7 @@ class AssociationModel:
             pr.print('First data scan; calculating support for '
                 'population transactions.', time=True)
             support = self.calculate_support(population, source, min_support,
-                max_support, binsize)
+                max_support, binsize, count_only=(count is not None))
 
             pr.print('Second data scan; building frequent patterns tree.', time=True)
             self.fpgrowth = Fpgrowth(support)
@@ -118,17 +148,19 @@ class AssociationModel:
         max_size = config['patterns']['max_size']
 
         pr.print('Beginning reading frequent patterns from tree.', time=True)
-        patterns = self.find_patterns(min_support, max_support, max_size)
+        patterns = self.find_patterns(min_support, max_support, max_size, 
+            count_only=(count == 'patterns'))
         del self.fpgrowth
 
         pr.print('Analyzing patterns for significant associations.', time=True)
         conditions = config['associations']
-        associations = self.find_associations(patterns, conditions, popsize)
+        self.find_associations(patterns, conditions, popsize,
+            count_only=(count == 'associations'))
         del patterns
 
-        pr.print('Pushing associations to database.', time=True)
-        self.database.write_rows(associations, 'associations')
-        del associations
+        # pr.print('Pushing associations to database.', time=True)
+        # self.database.write_rows(associations, 'associations')
+        # del associations
 
         index = config['run']['index']
         if index:
@@ -162,7 +194,8 @@ class AssociationModel:
             self.database.create_table(table)
         
 
-    def calculate_support(self, population, source, min_support, max_support, binsize):
+    def calculate_support(self, population, source, min_support, 
+            max_support, binsize, count_only=False):
         popsize = len(population)
         min_support = int(min_support * popsize)
         max_support = int(max_support * popsize)
@@ -195,8 +228,9 @@ class AssociationModel:
             if val >= min_support and val <= max_support}
 
         pr.print(f'Found {len(items)} items in target population.', time=True)
-        pr.print(f'Pushing support for {len(items)} items to database.', time=True)
-        self.database.write_rows(items, 'items')
+        if not count_only:
+            pr.print(f'Pushing support for {len(items)} items to database.', time=True)
+            self.database.write_rows(items, 'items')
 
         return support
 
@@ -232,16 +266,19 @@ class AssociationModel:
             del items
 
 
-    def find_patterns(self, min_support, max_support, maz_size):
+    def find_patterns(self, min_support, max_support, max_size, count_only=False):
         min_support = int(min_support * self.fpgrowth.tree.root.count)
         max_support = int(max_support * self.fpgrowth.tree.root.count)
 
         patterns = []
         generator = self.fpgrowth.find_patterns(self.fpgrowth.tree, 
-            min_support, max_support, maz_size)
+            min_support, max_support, max_size)
 
         count, n = 0, 1
         for pattern in generator:
+            if count_only:
+                count += 1
+                continue
             patterns.append(pattern)
             count += 1
             if count == n:
@@ -254,7 +291,7 @@ class AssociationModel:
         return patterns
 
 
-    def find_associations(self, patterns, conds, popsize):
+    def find_associations(self, patterns, conds, popsize, count_only=False):
         inf = float('inf')
         metrics = {
             'support':    lambda sAC, sA, sC: sAC,
@@ -282,6 +319,10 @@ class AssociationModel:
                     score = all(metrics[metric](sAC, sA, sC) >= cond 
                         for metric, cond in conds.items())
 
+                    if score and count_only:
+                        count += 1
+                        continue
+
                     if score:
                         associations.append((
                             count,
@@ -298,8 +339,10 @@ class AssociationModel:
                         if count == n:
                             pr.print(f'Found association {count}.', time=True)
                             n = n << 1
+                        if count % 100000 == 0:
+                            self.database.write_rows(associations, 'associations')
+                            associations = []                    
 
         if count != n >> 1:
             pr.print(f'Found association {count}.', time=True)
-
-        return associations
+        self.database.write_rows(associations, 'associations')

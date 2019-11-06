@@ -1,0 +1,107 @@
+{
+    "run": {
+        "silent": {
+            "type": "bool",
+            "description": "choose to run model without verbose output",
+            "required": false,
+            "default": false
+        },
+        "force": {
+            "type": "bool",
+            "description": "choose to force file/table changes; no prompting",
+            "required": false,
+            "default": false
+        },
+        "bin": {
+            "type": "int",
+            "description": "bin size for fetching items from database",
+            "required": false,
+            "default": 1000,
+            "min": 1
+        },
+        "log": {
+            "type": "str",
+            "description": "path to where to save log output for model run; great for debugging",
+            "required": false
+        },
+        "count": {
+            "type": "str",
+            "descriptions": "model run will only count the patterns or associations instead of generating them; great for debugging",
+            "options": [
+                "patterns",
+                "associations"
+            ],
+            "required": false
+        },
+        "items_file": {
+            "type": "str",
+            "description": "path to save output itemset as csv",
+            "dequired": true
+        },
+        "associations_file": {
+            "type": "str",
+            "description": "path to save output associations as csv",
+            "dequired": true
+        }
+    },
+    "population": {
+        "size": {
+            "type": "int",
+            "description": "size of population to generate",
+            "required": true,
+            "min": 1
+        },
+        "seed": {
+            "type": "int",
+            "description": "seed for random population generation; use null for no seed",
+            "required": false,
+            "default": null,
+            "min": 0
+        }
+    },
+    "patterns": {
+        "pickle": {
+            "type": "str",
+            "description": "path to where tree pickle will be loaded from",
+            "required": true
+        },
+        "min_support": {
+            "type": "float",
+            "required": false,
+            "default": 0.0,
+            "min": 0.0,
+            "max": 1.0
+        },
+        "max_support": {
+            "type": "float",
+            "required": false,
+            "default": 1.0,
+            "min": 0.0,
+            "max": 1.0
+        },
+        "max_size": {
+            "type": "int",
+            "required": true,
+            "min": 1
+        }
+    },
+    "associations": {
+        "type": "dict",
+        "description": "list of metrics to check associations against",
+        "required": true,
+        "struct": {
+            "type": "float",
+            "description": "max value for specified metric",
+            "min": 0.0,
+            "max": 1.0
+        },
+        "options": [
+            "confidence",
+            "support",
+            "lift",
+            "leverage"
+        ],
+        "min": 1,
+        "max": 4
+    }
+}

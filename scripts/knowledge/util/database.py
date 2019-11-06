@@ -107,7 +107,7 @@ class DatabaseUtil:
     
     def create_all_idxs(self, table):
         tbl_data = self.tables[table]
-        if 'primary_idx' in tbl_data:
+        if 'primary_idx' in tbl_data and len(tbl_data['primary_idx']):
             pr.print(f'Creating primary index on table "{table}".', time=True)
             self.create_primary_idx(table)
         if 'spatial_idxs' in tbl_data:

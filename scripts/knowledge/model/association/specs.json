@@ -27,7 +27,16 @@
         },
         "log": {
             "type": "str",
-            "description": "path to where to save log output for model run",
+            "description": "path to where to save log output for model run; great for debugging",
+            "required": false
+        },
+        "count": {
+            "type": "str",
+            "descriptions": "model run will only count the patterns or associations instead of generating them; great for debugging",
+            "options": [
+                "patterns",
+                "associations"
+            ],
             "required": false
         }
     },
@@ -55,7 +64,7 @@
                 "type": "str",
                 "description": "a source to pull data from for model",
                 "options": [
-                    "tests",
+                    "observations",
                     "conditions",
                     "treatments"
                 ]
@@ -124,7 +133,7 @@
         "required": true,
         "struct": {
             "type": "float",
-            "description": "",
+            "description": "max value for specified metric",
             "min": 0.0,
             "max": 1.0
         },

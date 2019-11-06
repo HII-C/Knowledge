@@ -22,20 +22,14 @@ parser.add_argument('--log', type=str, dest='log', default=None,
     help='specify a log file location; by default the log will not be saved')
 args = parser.parse_args()
 
-config = ConfigUtil.load_config(args.config)
-specs = ConfigUtil.load_specs(resource_filename('knowledge', 
-    'model/association/specs.json'))
-
-config = ConfigUtil.verify_config(specs, config)
-
-input('Config validated.')
+config = AssociationModel.validate_config(args.config)
 
 if config['run']['silent']:
     pr.silence()
 
 if args.log is not None:
     pr.log(args.log)
-elif config['run']['log']:
+elif config['run']['log'] is not None:
     pr.log(config['run']['log'])
 
 database = config['database']
