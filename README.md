@@ -63,7 +63,7 @@ These are little helper classes that make every-script tasks easier. The only ru
 Documentation of utilities:
 
 - [config](https://github.com/HII-C/Knowledge/blob/master/docs/conifg.md)
-- [database]((https://github.com/HII-C/Knowledge/blob/master/docs/database.md))
+- [database](https://github.com/HII-C/Knowledge/blob/master/docs/database.md)
 - [print](https://github.com/HII-C/Knowledge/blob/master/docs/print.md)
 
 ### `knowledge.env`

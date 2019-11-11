@@ -29,15 +29,6 @@
             "type": "str",
             "description": "path to where to save log output for model run; great for debugging",
             "required": false
-        },
-        "count": {
-            "type": "str",
-            "descriptions": "model run will only count the patterns or associations instead of generating them; great for debugging",
-            "options": [
-                "patterns",
-                "associations"
-            ],
-            "required": false
         }
     },
     "population": {
@@ -87,9 +78,15 @@
             "default": 1.0,
             "min": 0.0,
             "max": 1.0
+        },
+        "count_only": {
+            "type": "bool",
+            "description": "items will only be counted instead of being read: process will terminate after",
+            "required": false,
+            "default": false
         }
     },
-    "patterns": {
+    "tree": {
         "pickle": {
             "type": "str",
             "description": "path to where tree pickle will be saved to or loaded from",
@@ -106,7 +103,9 @@
             "description": "choose to save pickled tree to path",
             "required": false,
             "default": false
-        },
+        }
+    },
+    "patterns": {
         "min_support": {
             "type": "float",
             "required": false,
@@ -125,26 +124,35 @@
             "type": "int",
             "required": true,
             "min": 1
+        },
+        "count_only": {
+            "type": "bool",
+            "description": "patterns will only be counted instead of being read: process will terminate after",
+            "required": false,
+            "default": false
         }
     },
     "associations": {
-        "type": "dict",
-        "description": "list of metrics to check associations against",
-        "required": true,
-        "struct": {
+        "min_confidence": {
             "type": "float",
-            "description": "max value for specified metric",
+            "description": "minimum confidence for an association to be kept",
+            "required": false,
             "min": 0.0,
             "max": 1.0
         },
-        "options": [
-            "confidence",
-            "support",
-            "lift",
-            "leverage"
-        ],
-        "min": 1,
-        "max": 4
+        "min_support": {
+            "type": "float",
+            "description": "minimum support for an association to be kept",
+            "required": false,
+            "min": 0.0,
+            "max": 1.0
+        },
+        "count_only": {
+            "type": "bool",
+            "description": "associations will only be counted instead of being read; process will terminate after",
+            "required": false,
+            "default": false
+        }
     },
     "database": {
         "user": {
@@ -219,10 +227,22 @@
                             "description": "a column in a hash index"
                         }
                     }
+                },
+                "fulltext_idxs": {
+                    "type": "dict",
+                    "description": "list of fulltext indexes for the table",
+                    "required": false,
+                    "struct": {
+                        "type": "list",
+                        "description": "a fulltext index for the table",
+                        "struct": {
+                            "type": "str",
+                            "description": "a column in a fulltext index"
+                        }
+                    }
                 }
             },
             "required": false
         }
-
     }
 }

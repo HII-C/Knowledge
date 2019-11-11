@@ -104,6 +104,15 @@ class DatabaseUtil:
             ON {self.db}.{table} ({cols})'''
         self.cursor.execute(query)
         self.connection.commit()
+
+    def create_fulltext_idx(self, table, name):
+        cols = ', '.join(self.tables[table]['fulltext_idxs'][name])
+        query = f'''
+            CREATE FULLTEXT INDEX {name}
+            ON {self.db}.{table} ({cols})'''
+        self.cursor.execute(query)
+        self.connection.commit()
+        
     
     def create_all_idxs(self, table):
         tbl_data = self.tables[table]
@@ -125,18 +134,14 @@ class DatabaseUtil:
                 pr.print(f'Creating btree index "{idx}" on '
                     f'table "{table}".', time=True)
                 self.create_btree_idx(table, idx)
+        if 'fulltext_idxs' in tbl_data:
+            for idx in tbl_data['fulltext_idxs']:
+                pr.print(f'Creating fulltext index "{idx}" on '
+                    f'table "{table}".', time=True)
+                self.create_fulltext_idx(table, idx)
 
     def write_rows(self, data, table):
         s_strs = ', '.join(['%s'] * len(self.tables[table]['schema']))
-        query = f''' 
-            INSERT INTO {self.db}.{table}
-            VALUES ({s_strs}) '''
-        self.cursor.executemany(query, data)
-        self.connection.commit()
-
-    def write_geom_rows(self, data, table, geo=0, srid=0):
-        s_strs = ', '.join(['%s'] * (len(self.tables[table]['schema']) - geo))
-        s_strs += f', ST_GEOMFROMTEXT(%s, {srid})' * geo
         query = f''' 
             INSERT INTO {self.db}.{table}
             VALUES ({s_strs}) '''

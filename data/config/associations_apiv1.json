@@ -4,11 +4,11 @@
         "force": false,
         "index": true,
         "bin": 1000,
-        "log": "/home/benjamin/Documents/HII-C/data/temp/log/associations_apiv1.txt"
+        "log": "/home/benjamin/Documents/HII-C/data/temp/log/associations_apiv1_1.txt"
     },
     "population": {
-        "size": 10000,
-        "seed": 1234
+        "size": 60000,
+        "seed": null
     },
     "items": {
         "source": [
@@ -16,20 +16,25 @@
             "conditions",
             "treatments"
         ],
-        "min_support": 0.025,
+        "min_support": 0.01,
         "max_support": 0.3
     },
-    "patterns": {
-        "pickle": "/home/benjamin/Documents/HII-C/data/temp/pickle/associations_apiv1.p",
+    "tree": {
+        "pickle": "/home/benjamin/Documents/HII-C/data/temp/pickle/associations_apiv1_1.p",
         "load": true,
         "save": false,
-        "min_support": 0.025,
+        "count_only": false
+    },
+    "patterns": {
+        "min_support": 0.01,
         "max_support": 0.3,
-        "max_size": 5
+        "max_size": 5,
+        "count_only": false
     },
     "associations": {
-        "confidence": 0.95,
-        "support": 0.01
+        "min_support": 0.01,
+        "min_confidence": 0.95,
+        "count_only": false
     },
     "database": {
         "user": "python",

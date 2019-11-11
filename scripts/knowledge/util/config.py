@@ -95,6 +95,15 @@ class ConfigUtil:
             default values added onto it.
         '''
 
+        for attr in config.keys():
+            if attr not in specs.keys():
+                if type(attr) is int:
+                    path = f'{name}[{attr}]' if name != '' else attr
+                else:
+                    path = f'{name}.{attr}' if name != '' else attr
+                pr.print(f'Warning: config parameter "{path}" is not '
+                    'in model specifications.', time=True)
+
         for attr, spec in specs.items():
             param = config[attr] if attr in config else None
             if type(attr) is int:

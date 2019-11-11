@@ -31,19 +31,19 @@ class AssociationModel:
             'model/association/specs.json'))
         config = ConfigUtil.verify_config(specs, config)
 
-        patterns = config['patterns']            
-        if patterns['load']:
-            if patterns['pickle'] is None:
+        tree = config['tree']            
+        if tree['load']:
+            if tree['pickle'] is None:
                 raise ConfigError('Pickled tree path must be given to'
                     'load pickled tree.')
-            if not ConfigUtil.file_readable(patterns['pickle']):
+            if not ConfigUtil.file_readable(tree['pickle']):
                 raise FileNotFoundError('Pickled tree path must be a '
                     'path to a readable file.')
-        if patterns['save']:
-            if patterns['pickle'] is None:
+        if tree['save']:
+            if tree['pickle'] is None:
                 raise ConfigError('Pickled tree path must be given to'
                     'save pickled tree.')
-            if not ConfigUtil.file_writable(patterns['pickle']):
+            if not ConfigUtil.file_writable(tree['pickle']):
                 raise FileNotFoundError('Pickled tree path must be a '
                     'path to a writable file or directory.')
 
@@ -67,16 +67,18 @@ class AssociationModel:
 
         force = config['run']['force']
         binsize = config['run']['bin']
-        count = config['run']['count']
+        write = not (config['items']['count_only'] or
+            config['patterns']['count_only'] or
+            config['associations']['count_only'])
 
-        if count is not None:
+        if not write:
             del self.database.tables['items']
             del self.database.tables['associations']
 
         pr.print('Preallocating tables/files for output.', time=True)
 
-        if not force and config['patterns']['save']:
-            save = config['patterns']['pickle']
+        if not force and config['tree']['save']:
+            save = config['tree']['pickle']
             if ConfigUtil.file_exists(save):
                 cond = pr.print(f'Patterns tree pickle file "{save}" already '
                     'exists. Delete and continue? [Y/n] ', inquiry=True, 
@@ -86,8 +88,8 @@ class AssociationModel:
 
         self.create_tables(force)
 
-        if config['patterns']['load']:
-            load = config['patterns']['pickle']
+        if config['tree']['load']:
+            load = config['tree']['pickle']
 
             pr.print(f'Loading pickled patterns tree from "{load}".', time=True)
             self.fpgrowth = pickle.load(open(load, 'rb'))
@@ -102,7 +104,7 @@ class AssociationModel:
             pr.print(f'Tree complete with {len(items)} items, {trans} transactions, '
                 f'{events} events, and {nodes} nodes.', time=True)
             
-            if count is not None:
+            if write:
                 pr.print(f'Pushing support for {len(support)} items to '
                     'database.', time=True)
                 self.database.write_rows(items, 'items')
@@ -111,7 +113,7 @@ class AssociationModel:
             size = config['population']['size']
             seed = config['population']['seed']
 
-            pr.print(f'Generating sample population of size {size},', time=True)
+            pr.print(f'Generating sample population of size {size}.', time=True)
             population = self.generate_population(size, seed)
             popsize = len(population)
 
@@ -122,7 +124,7 @@ class AssociationModel:
             pr.print('First data scan; calculating support for '
                 'population transactions.', time=True)
             support = self.calculate_support(population, source, min_support,
-                max_support, binsize, count_only=(count is not None))
+                max_support, binsize, count_only=(not write))
 
             pr.print('Second data scan; building frequent patterns tree.', time=True)
             self.fpgrowth = Fpgrowth(support)
@@ -137,8 +139,8 @@ class AssociationModel:
                 f'{events} events, and {nodes} nodes.', time=True)
             
 
-        if config['patterns']['save']:
-            save = config['patterns']['pickle']
+        if config['tree']['save']:
+            save = config['tree']['pickle']
 
             pr.print(f'Saving pickled patterns tree to {save}.', time=True)
             pickle.dump(self.fpgrowth, open(save, 'wb'))
@@ -148,19 +150,25 @@ class AssociationModel:
         max_size = config['patterns']['max_size']
 
         pr.print('Beginning reading frequent patterns from tree.', time=True)
+        count_only = config['patterns']['count_only']
         patterns = self.find_patterns(min_support, max_support, max_size, 
-            count_only=(count == 'patterns'))
+            count_only=count_only)
         del self.fpgrowth
 
+        if count_only:
+            pr.print('Assoication model run complete.', time=True)
+            exit()
+
         pr.print('Analyzing patterns for significant associations.', time=True)
+        count_only = config['associations']['count_only']
         conditions = config['associations']
         self.find_associations(patterns, conditions, popsize,
-            count_only=(count == 'associations'))
+            count_only=count_only)
         del patterns
 
-        # pr.print('Pushing associations to database.', time=True)
-        # self.database.write_rows(associations, 'associations')
-        # del associations
+        if count_only:
+            pr.print('Assoication model run complete.', time=True)
+            exit()
 
         index = config['run']['index']
         if index:
@@ -276,14 +284,14 @@ class AssociationModel:
 
         count, n = 0, 1
         for pattern in generator:
-            if count_only:
-                count += 1
-                continue
-            patterns.append(pattern)
-            count += 1
             if count == n:
                 pr.print(f'Found pattern {count}.', time=True)
                 n = n << 1
+
+            if not count_only:
+                patterns.append(pattern)
+
+            count += 1
 
         if count != n >> 1:
             pr.print(f'Found pattern {count}.', time=True)
@@ -306,6 +314,11 @@ class AssociationModel:
         associations = []
         count, n = 0, 1
 
+        minmetrics = {cond[4:]: val for cond, val in conds.values() 
+            if cond in (f'min_{key}' for key in metrics.keys())}
+        maxmetrics = {cond[4:]: val for cond, val in conds.vlaues()
+            if cond in (f'max_{key}' for key in metrics.keys())}
+
         for pattern in pattern_dict.keys():
             sAC = pattern_dict[pattern]
             for idx in range(len(pattern)-1,0,-1):
@@ -317,13 +330,28 @@ class AssociationModel:
                     sC = pattern_dict[consequent]
 
                     score = all(metrics[metric](sAC, sA, sC) >= cond 
-                        for metric, cond in conds.items())
+                        for metric, cond in minmetrics.items())
+                    
+                    score &= all(metrics[metric](sAC, sA, sC) <= cond 
+                        for metric, cond in maxmetrics.items())
 
                     if score and count_only:
                         count += 1
                         continue
 
                     if score:
+                        if count == n:
+                            pr.print(f'Found association {count}.', time=True)
+                            n = n << 1
+
+                        if count_only:
+                            count += 1
+                            continue
+                        
+                        if count % 100000 == 0:
+                            self.database.write_rows(associations, 'associations')
+                            associations = []    
+                            
                         associations.append((
                             count,
                             ','.join(sorted(antecedent)),
@@ -334,15 +362,10 @@ class AssociationModel:
                             metrics['leverage'](sAC, sA, sC),
                             metrics['conviction'](sAC, sA, sC) if sAC != sA else None,
                             metrics['rpf'](sAC, sA, sC)))
-                        count += 1
-
-                        if count == n:
-                            pr.print(f'Found association {count}.', time=True)
-                            n = n << 1
-                        if count % 100000 == 0:
-                            self.database.write_rows(associations, 'associations')
-                            associations = []                    
+                        count += 1                
 
         if count != n >> 1:
             pr.print(f'Found association {count}.', time=True)
-        self.database.write_rows(associations, 'associations')
+
+        if not count_only:
+            self.database.write_rows(associations, 'associations')
