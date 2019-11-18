@@ -111,30 +111,30 @@ class DatabaseUtil:
             CREATE FULLTEXT INDEX {name}
             ON {self.db}.{table} ({cols})'''
         self.cursor.execute(query)
-        self.connection.commit()
-        
+        self.connection.commit()       
     
     def create_all_idxs(self, table):
         tbl_data = self.tables[table]
-        if 'primary_idx' in tbl_data and len(tbl_data['primary_idx']):
-            pr.print(f'Creating primary index on table "{table}".', time=True)
-            self.create_primary_idx(table)
-        if 'spatial_idxs' in tbl_data:
+        if 'primary_idx' in tbl_data and tbl_data['primary_idx'] is not None:
+            if len(tbl_data['primary_idx']):
+                pr.print(f'Creating primary index on table "{table}".', time=True)
+                self.create_primary_idx(table)
+        if 'spatial_idxs' in tbl_data and tbl_data['spatial_idxs'] is not None:
             for idx in tbl_data['spatial_idxs']:
                 pr.print(f'Creating spatial index "{idx}" on '
                     f'table "{table}".', time=True)
                 self.create_spatial_idx(table, idx)
-        if 'hash_idxs' in tbl_data:
+        if 'hash_idxs' in tbl_data and tbl_data['hash_idxs'] is not None:
             for idx in tbl_data['hash_idxs']:
                 pr.print(f'Creating hash index "{idx}" on '
                     f'table "{table}".', time=True)
                 self.create_hash_idx(table, idx)
-        if 'btree_idxs' in tbl_data:
+        if 'btree_idxs' in tbl_data and tbl_data['btree_idxs'] is not None:
             for idx in tbl_data['btree_idxs']:
                 pr.print(f'Creating btree index "{idx}" on '
                     f'table "{table}".', time=True)
                 self.create_btree_idx(table, idx)
-        if 'fulltext_idxs' in tbl_data:
+        if 'fulltext_idxs' in tbl_data and tbl_data['fulltext_idxs'] is not None:
             for idx in tbl_data['fulltext_idxs']:
                 pr.print(f'Creating fulltext index "{idx}" on '
                     f'table "{table}".', time=True)

@@ -58,6 +58,7 @@ class ConfigUtil:
             pr.print(f'Config file "{filepath}" is not valid json; '
                 'terminating model run.', time=True)
             raise err
+        
 
     @classmethod
     def load_specs(self, filepath):

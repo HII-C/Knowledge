@@ -4,7 +4,7 @@
         "force": false,
         "index": true,
         "bin": 1000,
-        "log": "/home/benjamin/Documents/HII-C/data/temp/log/associations_apiv1_1.txt"
+        "log": "/home/bmbrownl/data/apiv1_associations_log.txt"
     },
     "population": {
         "size": 60000,
@@ -20,20 +20,21 @@
         "max_support": 0.3
     },
     "tree": {
-        "pickle": "/home/benjamin/Documents/HII-C/data/temp/pickle/associations_apiv1_1.p",
+        "pickle": "/home/bmbrownl/data/apiv1_associations_tree.p",
         "load": true,
         "save": false,
         "count_only": false
     },
     "patterns": {
-        "min_support": 0.01,
+        "min_support": 0.001,
         "max_support": 0.3,
         "max_size": 5,
         "count_only": false
     },
     "associations": {
-        "min_support": 0.01,
+        "min_support": 0.001,
         "min_confidence": 0.95,
+        "csv": "/home/bmbrownl/data/apiv1_associations.csv",
         "count_only": false
     },
     "database": {

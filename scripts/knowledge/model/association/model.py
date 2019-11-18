@@ -1,20 +1,27 @@
 
 import psutil
 import pickle
+import csv
 
 from collections import defaultdict
 from itertools import combinations
 from pkg_resources import resource_filename
 
-from knowledge.model.association.database import AssociationDatabase
 from knowledge.struct.fpgrowth import Fpgrowth
 from knowledge.util.config import ConfigUtil
 from knowledge.util.error import ConfigError, UserExitError
 from knowledge.util.print import PrintUtil as pr
 
+try:
+    from knowledge.model.association.database import AssociationDatabase
+    mysql = True
+except:
+    mysql = False
+
 class AssociationModel:
-    def __init__(self, database):
-        self.database = AssociationDatabase(database)
+    def __init__(self, database=None):
+        if not mysql and database is not None:
+            self.database = AssociationDatabase(database)
         self.fpgrowth = None
 
     @staticmethod
@@ -23,15 +30,15 @@ class AssociationModel:
             yield arr[i: i+n]
 
     @staticmethod
-    def validate_config(filepath):
+    def validate_config(configpath, specspath):
         'validates a configuration file for the association model'
 
-        config = ConfigUtil.load_config(filepath)
-        specs = ConfigUtil.load_specs(resource_filename('knowledge', 
-            'model/association/specs.json'))
+        config = ConfigUtil.load_config(configpath)
+        specs = ConfigUtil.load_specs(specspath)
         config = ConfigUtil.verify_config(specs, config)
 
-        tree = config['tree']            
+        tree = config['tree']
+        association = config['associations']        
         if tree['load']:
             if tree['pickle'] is None:
                 raise ConfigError('Pickled tree path must be given to'
@@ -46,9 +53,21 @@ class AssociationModel:
             if not ConfigUtil.file_writable(tree['pickle']):
                 raise FileNotFoundError('Pickled tree path must be a '
                     'path to a writable file or directory.')
+        if association['csv']:
+            if not ConfigUtil.file_writable(association['csv']):
+                raise FileNotFoundError('Association csv path must be a '
+                    'path to a writable file or directory.')
+
+        if not mysql and not tree['load']:
+            raise ConfigError('No MySQL detected; cannot build tree without'
+                'MySQL environment.')
+
+        if not (mysql or association['csv'] is None 
+                or association['count_only']):
+            raise ConfigError('No MySQL detected; must specify csv location '
+                'to save associations instead of table.')
 
         return config
-
 
 
     def run(self, config, silent=None):
@@ -104,7 +123,7 @@ class AssociationModel:
             pr.print(f'Tree complete with {len(items)} items, {trans} transactions, '
                 f'{events} events, and {nodes} nodes.', time=True)
             
-            if write:
+            if write and mysql:
                 pr.print(f'Pushing support for {len(support)} items to '
                     'database.', time=True)
                 self.database.write_rows(items, 'items')
@@ -159,11 +178,14 @@ class AssociationModel:
             pr.print('Assoication model run complete.', time=True)
             exit()
 
+        patterns = {frozenset(p[1]): p[0] / popsize for p in patterns}
+
         pr.print('Analyzing patterns for significant associations.', time=True)
-        count_only = config['associations']['count_only']
         conditions = config['associations']
+        count_only = conditions['count_only']
+        csvpath = conditions['csv']
         self.find_associations(patterns, conditions, popsize,
-            count_only=count_only)
+            count_only=count_only, csvpath=csvpath)
         del patterns
 
         if count_only:
@@ -278,6 +300,8 @@ class AssociationModel:
         min_support = int(min_support * self.fpgrowth.tree.root.count)
         max_support = int(max_support * self.fpgrowth.tree.root.count)
 
+        observation_only = lambda items: all(i[0] == "O" for i in items)
+
         patterns = []
         generator = self.fpgrowth.find_patterns(self.fpgrowth.tree, 
             min_support, max_support, max_size)
@@ -288,10 +312,10 @@ class AssociationModel:
                 pr.print(f'Found pattern {count}.', time=True)
                 n = n << 1
 
-            if not count_only:
-                patterns.append(pattern)
-
-            count += 1
+            if not observation_only(pattern[1]):
+                if not count_only:
+                    patterns.append(pattern)
+                count += 1
 
         if count != n >> 1:
             pr.print(f'Found pattern {count}.', time=True)
@@ -299,7 +323,12 @@ class AssociationModel:
         return patterns
 
 
-    def find_associations(self, patterns, conds, popsize, count_only=False):
+    def find_associations(self, patterns, conds, popsize, count_only=False, 
+            csvpath=None):
+        if csvpath is not None:
+            csvfile = open(csv, 'w', newline='')
+            csvwriter = csv.writer(csvfile, delimiter=',', quotechar='"')
+
         inf = float('inf')
         metrics = {
             'support':    lambda sAC, sA, sC: sAC,
@@ -310,24 +339,23 @@ class AssociationModel:
             'rpf':        lambda sAC, sA, sC: sAC*sAC/sA
         }
 
-        pattern_dict = {frozenset(p[1]): p[0] / popsize for p in patterns}
         associations = []
         count, n = 0, 1
 
-        minmetrics = {cond[4:]: val for cond, val in conds.values() 
+        minmetrics = {cond[4:]: val for cond, val in conds.items() 
             if cond in (f'min_{key}' for key in metrics.keys())}
-        maxmetrics = {cond[4:]: val for cond, val in conds.vlaues()
+        maxmetrics = {cond[4:]: val for cond, val in conds.items()
             if cond in (f'max_{key}' for key in metrics.keys())}
 
-        for pattern in pattern_dict.keys():
-            sAC = pattern_dict[pattern]
+        for pattern in patterns.keys():
+            sAC = patterns[pattern]
             for idx in range(len(pattern)-1,0,-1):
                 for subset in combinations(pattern, r=idx):
                     antecedent = frozenset(subset)
                     consequent = pattern - antecedent
 
-                    sA = pattern_dict[antecedent]
-                    sC = pattern_dict[consequent]
+                    sA = patterns[antecedent]
+                    sC = patterns[consequent]
 
                     score = all(metrics[metric](sAC, sA, sC) >= cond 
                         for metric, cond in minmetrics.items())
@@ -349,7 +377,11 @@ class AssociationModel:
                             continue
                         
                         if count % 100000 == 0:
-                            self.database.write_rows(associations, 'associations')
+                            if mysql:
+                                self.database.write_rows(associations, 'associations')
+                            if csvpath is not None:
+                                csvwriter.writerows(associations)
+                                csvfile.flush()
                             associations = []    
                             
                         associations.append((
@@ -368,4 +400,12 @@ class AssociationModel:
             pr.print(f'Found association {count}.', time=True)
 
         if not count_only:
-            self.database.write_rows(associations, 'associations')
+            if mysql:
+                self.database.write_rows(associations, 'associations')
+            if csvpath is not None:
+                csvwriter.writerows(associations)
+                csvfile.close()
+
+
+    def analyze_associations(self):
+        pass

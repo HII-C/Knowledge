@@ -5,6 +5,7 @@ import re
 import time
 
 from datetime import datetime
+from getpass import getpass
 
 class PrintUtil:
     persist_str = ''
@@ -127,8 +128,17 @@ class PrintUtil:
         return custom_print
 
     @classmethod
+    def getpass(self, *args, **kwargs):
+        return self.print(*args, **kwargs, prompt=True, password=True)
+
+    @classmethod
+    def input(self, *args, **kwargs):
+        return self.print(*args, **kwargs, prompt=True)
+
+    @classmethod
     def print(self, string='', persist=False, replace=False, time=False, 
-            progress=None, frmt=None, inquiry=False, force=False):
+            progress=None, frmt=None, inquiry=False, force=False, prompt=False,
+            password=False):
         if self.silent and not force:
             return
         string = str(string)
@@ -154,6 +164,11 @@ class PrintUtil:
             else:
                 self.persist_str = string
             self.persist_rows = self.render_rows(self.persist_str)
+        elif prompt:
+            if password:
+                return getpass(string)
+            else:
+                return input(string)
         elif inquiry:
             response = input(string).lower()
             return response == 'y' or response == 'yes'

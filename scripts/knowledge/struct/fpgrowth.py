@@ -106,7 +106,6 @@ class Fpgrowth:
             self.tree.insert_itemset(itemset)
 
 
-
     def find_patterns(self, tree, min_support=0, max_support=1, max_size=0):
         '''recursively reads frequent patterns off of tree
         
@@ -197,8 +196,6 @@ class Tree:
             and count[item] <= max_support]
         items.sort(key=count.get)
         rank = {item: i for i, item in enumerate(items)}
-
-        
 
         tree = Tree()
         tree.items = self.items + [cond]

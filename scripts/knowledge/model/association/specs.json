@@ -147,6 +147,12 @@
             "min": 0.0,
             "max": 1.0
         },
+        "csv": {
+            "type": "str",
+            "description": "output path to csv file to dump associations",
+            "required": false,
+            "default": null
+        },
         "count_only": {
             "type": "bool",
             "description": "associations will only be counted instead of being read; process will terminate after",

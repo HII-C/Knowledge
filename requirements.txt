@@ -6,3 +6,4 @@ mysqlclient
 mlxtend
 dropbox
 psutil
+stickytape
