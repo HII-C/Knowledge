@@ -2,7 +2,7 @@
 
 ## About
 
-This is the Knowledge repository for the HII-C project. This repository contains the scripts that process the medical source data to form an intelligent medical knowledge base. If you are looking for how this knowledge base is processed and delivered on our API, look at our [MedLearnAPI repository](https://github.com/HII-C/MedLearnAPI).
+This is the Knowledge repository for the HII-C project. This repository contains the scripts that process the medical source data to form an intelligent medical knowledge base. If you are looking for how this knowledge base is processed and delivered on our API, look at our [HIIC-API repository](https://github.com/HII-C/HIIC-API).
 
 ## Installing/Building
 

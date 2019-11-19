@@ -8,6 +8,8 @@ fi
 
 # create standalone files for all models
 
-stickytape scripts/knowledge/model/association/__main__.py \
-    --add-python-path scripts/ \
-    --output-file deploy/association_standalone.py \
+pkg=$( cd "$(dirname "${BASH_SOURCE[0]}")/.." ; pwd -P )
+
+stickytape "${pkg}/scripts/knowledge/model/association/__main__.py" \
+    --add-python-path "${pkg}/scripts/" \
+    --output-file "${pkg}/deploy/association_standalone.py"

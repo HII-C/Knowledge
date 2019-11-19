@@ -62,8 +62,8 @@ class AssociationModel:
             raise ConfigError('No MySQL detected; cannot build tree without'
                 'MySQL environment.')
 
-        if not (mysql or association['csv'] is None 
-                or association['count_only']):
+        if (not mysql and association['csv'] is None 
+                and not association['count_only']):
             raise ConfigError('No MySQL detected; must specify csv location '
                 'to save associations instead of table.')
 
@@ -105,7 +105,8 @@ class AssociationModel:
                 if not cond:
                     raise UserExitError('User chose to terminate process.')
 
-        self.create_tables(force)
+        if mysql:
+            self.create_tables(force)
 
         if config['tree']['load']:
             load = config['tree']['pickle']
