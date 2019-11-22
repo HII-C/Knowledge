@@ -5,7 +5,6 @@ create database if not exists synthea;
 
 use synthea;
 
-
 drop table if exists patients;
 create table patients (
     id char(36),
@@ -51,8 +50,6 @@ set
     ethnicity = @ethnicity,
     gender = (@gender = "M");
 
-
-
 drop table if exists encounters;
 create table encounters (
     id char(36),
@@ -79,7 +76,6 @@ set
     reason_code = (case @reason_code when "" then null else @reason_code end),
     reason_description = (case @reason_description when "" then null else @reason_description end);
 
-
 drop table if exists observations;
 create table observations (
     `date` date,
@@ -105,8 +101,6 @@ set
     `description` = @description,
     `value` = (case @value when "" then null else @value end),
     unit = (case @unit when "" then null else @unit end);
-
-
 
 drop table if exists conditions;
 create table conditions (
@@ -148,12 +142,13 @@ load data local infile '/home/benjamin/Documents/HII-C/data/source/synthea_1m_fh
     fields terminated by ',' escaped by '\\' optionally enclosed by '"'
     lines terminated by '\n'
     ignore 1 lines
-    (   @start, @stop, @patient, @code, @description, 
+    (   @start, @stop, @patient, @encounter, @code, @description, 
         @reason_code, @reason_description  )
 set
     `start` = @start,
     `stop` = (case @stop when "" then null else @stop end),
     patient = @patient,
+    encounter = @encounter,
     code = (case @code when "" then null else @code end),
     `description` = (case @description when "" then null else @description end),
     reason_code = (case @reason_code when "" then null else @reason_code end),
