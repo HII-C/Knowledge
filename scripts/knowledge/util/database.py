@@ -12,7 +12,7 @@ class DatabaseUtil:
         if type(database) is DatabaseUtil:
             self = database
         elif type(params) is dict:
-            keys = ('user', 'password', 'db', 'host', 'unix_socket')
+            keys = ('user', 'password', 'db', 'host', 'sock')
             login = {key:params[key] for key in keys if key in params}
             self.user = params['user']
             self.host = params['host']

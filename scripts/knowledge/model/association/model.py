@@ -1,8 +1,8 @@
 
 import psutil
 import pickle
-import csv
 
+from csv import writer
 from collections import defaultdict
 from itertools import combinations
 from pkg_resources import resource_filename
@@ -13,21 +13,19 @@ from knowledge.util.error import ConfigError, UserExitError
 from knowledge.util.print import PrintUtil as pr
 
 try:
-    from knowledge.model.association.database import AssociationDatabase
+    from knowledge.struct.population import Population
     mysql = True
 except:
     mysql = False
 
+
 class AssociationModel:
     def __init__(self, database=None):
         if not mysql and database is not None:
-            self.database = AssociationDatabase(database)
+            self.population = Population(database)
+            self.database = self.population.database
         self.fpgrowth = None
-
-    @staticmethod
-    def chunk(arr, n):
-        for i in range(0, len(arr), n):
-            yield arr[i: i+n]
+    
 
     @staticmethod
     def validate_config(configpath, specspath):
@@ -77,6 +75,8 @@ class AssociationModel:
         config: dict
             A dictionary representation of the JSON config file.
             See documentation for specifications of the config file.
+        silent: bool
+
 
         Throws
         ------
@@ -85,7 +85,6 @@ class AssociationModel:
         '''
 
         force = config['run']['force']
-        binsize = config['run']['bin']
         write = not (config['items']['count_only'] or
             config['patterns']['count_only'] or
             config['associations']['count_only'])
@@ -94,8 +93,7 @@ class AssociationModel:
             del self.database.tables['items']
             del self.database.tables['associations']
 
-        pr.print('Preallocating tables/files for output.', time=True)
-
+        pr.print('Preallocating tables and files for output.', time=True)
         if not force and config['tree']['save']:
             save = config['tree']['pickle']
             if ConfigUtil.file_exists(save):
@@ -121,7 +119,7 @@ class AssociationModel:
             events = sum(n.count for item in self.fpgrowth.tree.nodes.values()
                 for n in item) - trans
             nodes = sum(len(item) for item in self.fpgrowth.tree.nodes.values())
-            pr.print(f'Tree complete with {len(items)} items, {trans} transactions, '
+            pr.print(f'Tree complete with {len(items)} items, {trans} encounters, '
                 f'{events} events, and {nodes} nodes.', time=True)
             
             if write and mysql:
@@ -131,70 +129,51 @@ class AssociationModel:
         
         else:
             size = config['population']['size']
-            seed = config['population']['seed']
 
             pr.print(f'Generating sample population of size {size}.', time=True)
-            population = self.generate_population(size, seed)
-            popsize = len(population)
-
-            min_support = config['items']['min_support']
-            max_support = config['items']['max_support']
-            source = config['items']['source']
+            self.generate_population(**config['population'])
 
             pr.print('First data scan; calculating support for '
-                'population transactions.', time=True)
-            support = self.calculate_support(population, source, min_support,
-                max_support, binsize, count_only=(not write))
+                'population encounters.', time=True)
+            support = self.calculate_support(**config['items'])
 
             pr.print('Second data scan; building frequent patterns tree.', time=True)
             self.fpgrowth = Fpgrowth(support)
-            self.build_tree(population, source, binsize)
+            self.build_tree(config['items']['source'], config['run']['bin'])
 
-            items = len(self.fpgrowth.support)
+            items = self.population.items
             trans = self.fpgrowth.tree.root.count
             events = sum(n.count for item in self.fpgrowth.tree.nodes.values()
                 for n in item) - trans
             nodes = sum(len(item) for item in self.fpgrowth.tree.nodes.values())
             pr.print(f'Tree complete with {items} items, {trans} transactions, '
                 f'{events} events, and {nodes} nodes.', time=True)
-            
 
         if config['tree']['save']:
             save = config['tree']['pickle']
-
             pr.print(f'Saving pickled patterns tree to {save}.', time=True)
             pickle.dump(self.fpgrowth, open(save, 'wb'))
-
-        min_support = config['patterns']['min_support']
-        max_support = config['patterns']['max_support']
-        max_size = config['patterns']['max_size']
-
+            
         pr.print('Beginning reading frequent patterns from tree.', time=True)
-        count_only = config['patterns']['count_only']
-        patterns = self.find_patterns(min_support, max_support, max_size, 
-            count_only=count_only)
+        patterns = self.find_patterns(**config['patterns'])
         del self.fpgrowth
 
-        if count_only:
+        if config['patters']['count_only']:
             pr.print('Assoication model run complete.', time=True)
-            exit()
+            return
 
-        patterns = {frozenset(p[1]): p[0] / popsize for p in patterns}
+        patterns = {frozenset(p[1]): p[0] / self.population.encounters
+            for p in patterns}
 
         pr.print('Analyzing patterns for significant associations.', time=True)
-        conditions = config['associations']
-        count_only = conditions['count_only']
-        csvpath = conditions['csv']
-        self.find_associations(patterns, conditions, popsize,
-            count_only=count_only, csvpath=csvpath)
+        self.find_associations(patterns, **config['associations'])
         del patterns
 
-        if count_only:
+        if config['associations']['count_only']:
             pr.print('Assoication model run complete.', time=True)
-            exit()
+            return
 
-        index = config['run']['index']
-        if index:
+        if config['run']['index']:
             pr.print('Creating indexes on all new tables.', time=True)
             for table in self.database.tables.keys():
                 self.database.create_all_idxs(table)
@@ -202,13 +181,11 @@ class AssociationModel:
         pr.print('Assoication model run complete.', time=True)
 
         
-    def generate_population(self, size, seed=None):
-        population = self.database.fetch_population(size, seed=seed)
-        popsize = len(population)
-        if size > popsize:
-            pr.print(f'Requested population size of {size} but only '
-                f'found a max of {size} admissions.', time=True)
-        return population
+    def generate_population(self, source, size, rand=True, seed=None):
+        self.population.generate_population(source, size=size, rand=rand, seed=seed)
+        if size > self.population.encounters:
+            pr.print(f'Requested population size of {size} but only found a max '
+                f'of {self.population.encounters} admissions.', time=True)
 
 
     def create_tables(self, force=False):
@@ -225,72 +202,62 @@ class AssociationModel:
             self.database.create_table(table)
         
 
-    def calculate_support(self, population, source, min_support, 
-            max_support, binsize, count_only=False):
-        popsize = len(population)
-        min_support = int(min_support * popsize)
-        max_support = int(max_support * popsize)
+    def calculate_support(self, source, min_support, max_support, count_only=False):
+        '''calculate support for itemset; constrain itemset by support bounds
+        '''
+        self.population.generate_items(min_support, max_support)
+        items = self.population.fetch_items()
 
-        support = defaultdict(int)
-        for subpop in self.chunk(population, binsize):
-            subjects, admissions = list(map(list, zip(*subpop)))
+        support = {key: val for key, val in items}
 
-            pr.print(f'Fetching events for {len(subpop)} transactions.', time=True)
-            events = self.database.fetch_events(source, subjects, admissions)
+        pr.print(f'Found {self.population.items} items in target population '
+            f'on support interval [{min_support} {max_support}].', time=True)
 
-            pr.print(f'Calculating and merging support for {len(events)} '
-                'events.', time=True)
-            items = set()
-            hadmid = 0
-            count = 0
-            for event in events:
-                if event[0] != hadmid:
-                    hadmid = event[0]
-                    for item in items:
-                        support[item] += 1
-                    items = set()
-                    count += 1
-                items.add(event[1])
-            del events
-
-        items = [(key, val/popsize) for key, val in support.items()
-            if val >= min_support and val <= max_support]
-        support = {key: val for key, val in support.items()
-            if val >= min_support and val <= max_support}
-
-        pr.print(f'Found {len(items)} items in target population.', time=True)
         if not count_only:
-            pr.print(f'Pushing support for {len(items)} items to database.', time=True)
-            self.database.write_rows(items, 'items')
+            pr.print(f'Copying support for {self.population.items} '
+                'items to database.', time=True)
+            query = f'''
+                INSERT INTO {self.database.db}.items
+                SELECT * FROM items '''
+            self.database.cursor.execute(query)
+            self.database.cursor.commit()
 
         return support
 
         
-    def build_tree(self, population, source, bin_size):
-        for subpopulation in self.chunk(population, bin_size):
-            pr.print(f'Fetching events for {len(subpopulation)}'
-                ' transactions.', time=True)
+    def build_tree(self, source, bin_size=100000):
+        '''iteratively build frequent patterns tree
 
-            subjects, admissions = list(map(list, zip(*subpopulation)))
-            events = self.database.fetch_events(source, subjects, admissions)
+        Parameters
+        ----------
+        source: list[str]
 
-            pr.print(f'Retrieved {len(events)} events; appending them'
-                ' to the tree.', time=True)
+        bin_size: int
+        '''
+
+        for offset in range(0, self.population.encounters, bin_size):
+            lmt = min(bin_size, self.population.encounters)
+            pr.print(f'Fetching events for {lmt} encounters.', time=True)
+
+            events = self.population.fetch_events(source, offset, bin_size)
+
+            pr.print(f'Retrieved {len(events)} events; inserting them'
+                ' into the fpgrowth tree.', time=True)
             
-            transactions = []
+            encounters = []
             items = set()
             hadmid = 0
             for event in events:
                 if event[0] != hadmid:
                     hadmid = event[0]
                     if len(items):
-                        transactions.append(items)
+                        encounters.append(items)
                     items = set()
                 items.add(event[1])
             del events
 
-            matrix, items = Fpgrowth.matrix(transactions)
-            del transactions
+            matrix, items = Fpgrowth.matrix(encounters)
+            del encounters
 
             self.fpgrowth.build_tree(matrix, items)
             del matrix
@@ -298,6 +265,8 @@ class AssociationModel:
 
 
     def find_patterns(self, min_support, max_support, max_size, count_only=False):
+        '''read patterns of of frequent patterns tree
+        '''
         min_support = int(min_support * self.fpgrowth.tree.root.count)
         max_support = int(max_support * self.fpgrowth.tree.root.count)
 
@@ -325,10 +294,10 @@ class AssociationModel:
 
 
     def find_associations(self, patterns, conds, popsize, count_only=False, 
-            csvpath=None):
-        if csvpath is not None:
+            csv=None, save=False):
+        if save:
             csvfile = open(csv, 'w', newline='')
-            csvwriter = csv.writer(csvfile, delimiter=',', quotechar='"')
+            csvwriter = writer(csvfile, delimiter=',', quotechar='"')
 
         inf = float('inf')
         metrics = {
@@ -380,7 +349,7 @@ class AssociationModel:
                         if count % 100000 == 0:
                             if mysql:
                                 self.database.write_rows(associations, 'associations')
-                            if csvpath is not None:
+                            if save:
                                 csvwriter.writerows(associations)
                                 csvfile.flush()
                             associations = []    
@@ -403,10 +372,6 @@ class AssociationModel:
         if not count_only:
             if mysql:
                 self.database.write_rows(associations, 'associations')
-            if csvpath is not None:
+            if save:
                 csvwriter.writerows(associations)
                 csvfile.close()
-
-
-    def analyze_associations(self):
-        pass

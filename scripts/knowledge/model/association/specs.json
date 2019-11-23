@@ -38,12 +38,27 @@
             "required": true,
             "min": 1
         },
+        "source": {
+            "type": "str",
+            "description": "source database for patient medical data",
+            "required": true,
+            "options": [
+                "synthea",
+                "mimic"
+            ]
+        },
         "seed": {
             "type": "int",
             "description": "seed for random population generation; use null for no seed",
             "required": false,
             "default": null,
             "min": 0
+        },
+        "rand": {
+            "type": "bool",
+            "description": "choose to randomly sample population; otherwise read sequentially",
+            "required": false,
+            "default": true
         }
     },
     "items": {
@@ -100,7 +115,7 @@
         },
         "save": {
             "type": "bool",
-            "description": "choose to save pickled tree to path",
+            "description": "choose to save pickled tree to specified path",
             "required": false,
             "default": false
         }
@@ -146,6 +161,12 @@
             "required": false,
             "min": 0.0,
             "max": 1.0
+        },
+        "save": {
+            "type": "bool",
+            "description": "choose to save associations as csv to specified path",
+            "required": false,
+            "default": false
         },
         "csv": {
             "type": "str",

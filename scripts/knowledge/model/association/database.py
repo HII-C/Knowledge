@@ -1,7 +1,7 @@
 
-from knowledge.util.database import DatabaseUtil
+from knowledge.struct.population import Population
 
-class AssociationDatabase(DatabaseUtil):
+class AssociationDatabase(Population):
     def fetch_population(self, size, seed=None):
         seed = seed if seed is not None else ''
         query = f'''
@@ -49,29 +49,4 @@ class AssociationDatabase(DatabaseUtil):
         query += '\nORDER BY HADM_ID'
         self.cursor.execute(query)
         return self.cursor.fetchall()
-
-    def count_by_concept(self):
-        query = f'''
-            SELECT
-                SUM((CHAR_LENGTH(antecedent) - 
-                    CHAR_LENGTH(REPLACE(antecedent, "O-", ""))) / 2
-                ) AS `ante-obs`,
-                SUM((CHAR_LENGTH(antecedent) - 
-                    CHAR_LENGTH(REPLACE(antecedent, "T-", ""))) / 2
-                ) AS `ante-trt`,
-                SUM((CHAR_LENGTH(antecedent) - 
-                    CHAR_LENGTH(REPLACE(antecedent, "C-", ""))) / 2
-                ) AS `ante-con`,
-                SUM((CHAR_LENGTH(consequent) - 
-                    CHAR_LENGTH(REPLACE(consequent, "O-", ""))) / 2
-                ) AS `cons-obs`,
-                SUM((CHAR_LENGTH(consequent) - 
-                    CHAR_LENGTH(REPLACE(consequent, "T-", ""))) / 2
-                ) AS `cons-trt`,
-                SUM((CHAR_LENGTH(consequent) - 
-                    CHAR_LENGTH(REPLACE(consequent, "C-", ""))) / 2
-                ) AS `cons-con`
-            FROM {self.db}.associations
-        '''
-
     
