@@ -4,8 +4,31 @@ import numpy as np
 
 from collections import defaultdict
 from itertools import combinations
+from multiprocessing import Pool, Value
+from ctypes import c_uint64
 
 from knowledge.util.print import PrintUtil as pr
+
+
+count = None
+n = None
+
+def thread_patterns(tree, min_support, max_support, max_size):
+    '''pattern finding function for a single thread
+    '''
+    generator = Fpgrowth.generate_patterns(tree, min_support, 
+        max_support, max_size)
+    patterns = []
+    for pattern in generator:
+        patterns.append(pattern)
+        if count.value >= n.value:
+            with n.get_lock():
+                n.value <<= 1
+            pr.print(f'Found pattern {count.value}.', time=True)
+        with count.get_lock():
+            count.value += 1
+    return patterns
+
 
 class Fpgrowth:
     '''data structure and utilities for running fpgrowth algorithm
@@ -104,8 +127,50 @@ class Fpgrowth:
             self.tree.insert_itemset(itemset)
 
 
-    def find_patterns(self, tree, min_support=0, max_support=1, max_size=0):
-        '''recursively reads frequent patterns off of tree
+    def find_patterns(self, tree, min_support=0, max_support=1, 
+            max_size=0, cores=None):
+        '''
+        '''
+        pr.print(f'Balancing tree into tasks for {cores} cores.', time=True)
+        items = tree.nodes.keys()
+        subtrees = []
+        patterns = []
+
+        for item in items:
+            subtree = tree.conditional_tree(item, min_support, max_support)
+            subtrees.append((subtree, min_support, max_support, max_size))
+        subtrees.sort(key=lambda tree: tree[0].root.count_descendents(), reverse=True)
+
+        
+        global count
+        count = Value(c_uint64)
+        count.value = 0
+        global n
+        n = Value(c_uint64)
+        n.value = 1
+
+        for item in items:
+            support = sum([node.count for node in tree.nodes[item]])
+            patterns.append((support, (item,)))
+            if count.value >= n.value:
+                pr.print(f'Found pattern {count.value}.', time=True)
+                n.value <<= 1
+            count.value += 1
+
+        pool = Pool(processes=cores)
+        pr.print(f'Finding patterns on {cores} cores.', time=True)
+        for result in pool.starmap(thread_patterns, subtrees):
+            patterns.extend(result)
+        if count.value != n.value >> 1:
+            pr.print(f'Found pattern {count.value}.', time=True)
+        pool.close()
+        pool.join()
+        return patterns
+
+        
+    @classmethod
+    def generate_patterns(self, tree, min_support=0, max_support=1, max_size=0):
+        '''recursively generates frequent patterns off of tree
         
         Parameters
         ----------
@@ -141,7 +206,7 @@ class Fpgrowth:
                 
             for item in items:
                 subtree = tree.conditional_tree(item, min_support, max_support)
-                for support, itemset in self.find_patterns(subtree, 
+                for support, itemset in self.generate_patterns(subtree, 
                         min_support, max_support, max_size):
                     yield support, itemset
 
@@ -221,7 +286,7 @@ class Node:
         A value describing the name of the item the node is associated with.
     
     count: int = 1
-        What value to initializ the count of the node on; default is 1.
+        What value to initialize the count of the node on; default is 1.
 
     parent: Node = None
         The parent node of the node being constructed; default is None type.
@@ -232,6 +297,13 @@ class Node:
         self.count = count
         self.children = {}
         self.parent = parent
+
+
+    def count_descendents(self, n=None):
+        if n is not None and n <= 0:
+            return 1
+        else:
+            return sum(node.count_descendents() for node in self.children.values()) + 1
 
 
     def itempath(self):

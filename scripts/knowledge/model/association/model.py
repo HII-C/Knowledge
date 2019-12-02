@@ -21,7 +21,7 @@ except:
 
 class AssociationModel:
     def __init__(self, database=None):
-        if not mysql and database is not None:
+        if mysql and database is not None:
             self.population = Population(database)
             self.database = self.population.database
         self.fpgrowth = None
@@ -29,8 +29,8 @@ class AssociationModel:
 
     @staticmethod
     def validate_config(configpath, specspath):
-        'validates a configuration file for the association model'
-
+        '''validates a configuration file for the association model
+        '''
         config = ConfigUtil.load_config(configpath)
         specs = ConfigUtil.load_specs(specspath)
         config = ConfigUtil.verify_config(specs, config)
@@ -105,6 +105,8 @@ class AssociationModel:
 
         if mysql:
             self.create_tables(force)
+            if not config['tree']['load']:
+                self.population.create_tables(force)
 
         if config['tree']['load']:
             load = config['tree']['pickle']
@@ -122,10 +124,10 @@ class AssociationModel:
             pr.print(f'Tree complete with {len(items)} items, {trans} encounters, '
                 f'{events} events, and {nodes} nodes.', time=True)
             
-            if write and mysql:
-                pr.print(f'Pushing support for {len(support)} items to '
-                    'database.', time=True)
-                self.database.write_rows(items, 'items')
+            # if write and mysql:
+            #     pr.print(f'Pushing support for {len(support)} items to '
+            #         'database.', time=True)
+            #     self.database.write_rows(items, 'items')
         
         else:
             size = config['population']['size']
@@ -134,7 +136,7 @@ class AssociationModel:
             self.generate_population(**config['population'])
 
             pr.print('First data scan; calculating support for '
-                'population encounters.', time=True)
+                'population items.', time=True)
             support = self.calculate_support(**config['items'])
 
             pr.print('Second data scan; building frequent patterns tree.', time=True)
@@ -146,7 +148,7 @@ class AssociationModel:
             events = sum(n.count for item in self.fpgrowth.tree.nodes.values()
                 for n in item) - trans
             nodes = sum(len(item) for item in self.fpgrowth.tree.nodes.values())
-            pr.print(f'Tree complete with {items} items, {trans} transactions, '
+            pr.print(f'Tree complete with {items} items, {trans} encounters, '
                 f'{events} events, and {nodes} nodes.', time=True)
 
         if config['tree']['save']:
@@ -155,15 +157,13 @@ class AssociationModel:
             pickle.dump(self.fpgrowth, open(save, 'wb'))
             
         pr.print('Beginning reading frequent patterns from tree.', time=True)
-        patterns = self.find_patterns(**config['patterns'])
+        patterns = self.find_patterns(**config['patterns'], 
+            cores=config['run']['cores'])
         del self.fpgrowth
 
-        if config['patters']['count_only']:
+        if config['patterns']['count_only']:
             pr.print('Assoication model run complete.', time=True)
             return
-
-        patterns = {frozenset(p[1]): p[0] / self.population.encounters
-            for p in patterns}
 
         pr.print('Analyzing patterns for significant associations.', time=True)
         self.find_associations(patterns, **config['associations'])
@@ -205,22 +205,13 @@ class AssociationModel:
     def calculate_support(self, source, min_support, max_support, count_only=False):
         '''calculate support for itemset; constrain itemset by support bounds
         '''
-        self.population.generate_items(min_support, max_support)
+        self.population.generate_items(source, min_support, max_support)
         items = self.population.fetch_items()
 
         support = {key: val for key, val in items}
 
         pr.print(f'Found {self.population.items} items in target population '
-            f'on support interval [{min_support} {max_support}].', time=True)
-
-        if not count_only:
-            pr.print(f'Copying support for {self.population.items} '
-                'items to database.', time=True)
-            query = f'''
-                INSERT INTO {self.database.db}.items
-                SELECT * FROM items '''
-            self.database.cursor.execute(query)
-            self.database.cursor.commit()
+            f'on support interval [{min_support}, {max_support}].', time=True)
 
         return support
 
@@ -264,37 +255,24 @@ class AssociationModel:
             del items
 
 
-    def find_patterns(self, min_support, max_support, max_size, count_only=False):
+    def find_patterns(self, min_support, max_support, max_size,
+            count_only=False, cores=None):
         '''read patterns of of frequent patterns tree
         '''
-        min_support = int(min_support * self.fpgrowth.tree.root.count)
-        max_support = int(max_support * self.fpgrowth.tree.root.count)
+        encounters = self.fpgrowth.tree.root.count
+        min_support = int(min_support * encounters)
+        max_support = int(max_support * encounters)
 
-        observation_only = lambda items: all(i[0] == "O" for i in items)
+        patterns_array = self.fpgrowth.find_patterns(self.fpgrowth.tree, min_support, 
+            max_support, max_size, cores)
+        
+        patterns_dict = {frozenset(p[1]): p[0] / encounters for p in patterns_array}
 
-        patterns = []
-        generator = self.fpgrowth.find_patterns(self.fpgrowth.tree, 
-            min_support, max_support, max_size)
-
-        count, n = 0, 1
-        for pattern in generator:
-            if count == n:
-                pr.print(f'Found pattern {count}.', time=True)
-                n = n << 1
-
-            if not observation_only(pattern[1]):
-                if not count_only:
-                    patterns.append(pattern)
-                count += 1
-
-        if count != n >> 1:
-            pr.print(f'Found pattern {count}.', time=True)
-
-        return patterns
+        return patterns_dict
 
 
-    def find_associations(self, patterns, conds, popsize, count_only=False, 
-            csv=None, save=False):
+    def find_associations(self, patterns, count_only=False, min_support=0,
+            min_confidence=0, csv=None, save=False):
         if save:
             csvfile = open(csv, 'w', newline='')
             csvwriter = writer(csvfile, delimiter=',', quotechar='"')
@@ -312,11 +290,6 @@ class AssociationModel:
         associations = []
         count, n = 0, 1
 
-        minmetrics = {cond[4:]: val for cond, val in conds.items() 
-            if cond in (f'min_{key}' for key in metrics.keys())}
-        maxmetrics = {cond[4:]: val for cond, val in conds.items()
-            if cond in (f'max_{key}' for key in metrics.keys())}
-
         for pattern in patterns.keys():
             sAC = patterns[pattern]
             for idx in range(len(pattern)-1,0,-1):
@@ -327,11 +300,8 @@ class AssociationModel:
                     sA = patterns[antecedent]
                     sC = patterns[consequent]
 
-                    score = all(metrics[metric](sAC, sA, sC) >= cond 
-                        for metric, cond in minmetrics.items())
-                    
-                    score &= all(metrics[metric](sAC, sA, sC) <= cond 
-                        for metric, cond in maxmetrics.items())
+                    score = (metrics['support'](sAC, sA, sC) >= min_support and
+                        metrics['confidence'](sAC, sA, sC) >= min_confidence)
 
                     if score and count_only:
                         count += 1

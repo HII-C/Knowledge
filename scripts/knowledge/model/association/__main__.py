@@ -1,5 +1,4 @@
 
-import json
 import sys
 
 from pkg_resources import resource_filename
@@ -32,13 +31,13 @@ args = parser.parse_args()
 # load default config/specs files if not passed via command line arguments
 # when running without package, default config/specs will not load
 if args.pkg is False and (args.config is None or args.specs is None):
-    pr.print('When running as standalone, --config and --specs ' 
-        'are required')
+    pr.print('warn: When running as standalone, --config and --specs ' 
+        'are required.', time=True)
 try:
     if args.config is None:
         args.config = resource_filename('knowledge', 'model/association/config.json')
     if args.specs is None:
-        args.specs = resource_filename('knowledge', 'model/association/config.json')
+        args.specs = resource_filename('knowledge', 'model/association/specs.json')
 except:
     pr.print('Default config/specs file not found; fix packaging or, if'
         'not running as a package, specify a config and specs with '
@@ -54,11 +53,11 @@ if config['run']['silent']:
 # add log if in arguments or config
 if args.log is not None:
     pr.log(args.log)
-elif config['run']['log'] is not None:
+elif config['run']['log'] not in (None, ''):
     pr.log(config['run']['log'])
 
 # prompt for SQL password if running as package
-if not args.pkg:
+if args.pkg:
     database = config['database']
     database['password'] = pr.getpass(f'SQL password for {database["user"]}'
         '@localhost: ', time=True)

@@ -1,56 +1,52 @@
 {
     "run": {
         "bin": 1000,
+        "cores": 4,
         "force": false,
         "index": true,
-        "log": "",
+        "log": "/home/benjamin/Documents/HII-C/data/models/apiv1/small_association/log.txt",
         "silent": false
     },
     "population": {
         "rand": true,
-        "seed": null,
-        "size": 1000,
-        "source": ""
+        "seed": 4231,
+        "size": 60000,
+        "source": "mimic"
     },
     "items": {
         "count_only": false,
         "max_support": 0.5,
-        "min_support": 0.1,
-        "source": []
+        "min_support": 0.025,
+        "source": [
+            "conditions",
+            "observations",
+            "treatments"
+        ]
     },
     "tree": {
         "load": false,
-        "pickle": "",
-        "save": false
+        "pickle": "/home/benjamin/Documents/HII-C/data/models/apiv1/small_association/tree.p",
+        "save": true
     },
     "patterns": {
         "count_only": false,
         "max_size": 3,
         "max_support": 0.5,
-        "min_support": 0.01
+        "min_support": 0.025
     },
     "associations": {
         "count_only": false,
-        "csv": "",
+        "csv": "/home/benjamin/Documents/HII-C/data/models/apiv1/small_association/associations.csv",
         "min_confidence": 0.95,
-        "min_support": 0.01,
+        "min_support": 0.05,
         "save": false
     },
     "database": {
-        "user": "",
-        "host": "",
-        "db": "",
+        "user": "python",
+        "host": "localhost",
+        "db": "APIv1",
         "password": "",
         "tables": {
-            "items": {
-                "schema": [
-                    "item VARCHAR(15)",
-                    "support FLOAT"
-                ],
-                "primary_idx": [ "item" ],
-                "btree_idxs": {},
-                "hash_idxs": {}
-            },
             "associations": {
                 "schema": [
                     "association_id MEDIUMINT UNSIGNED",

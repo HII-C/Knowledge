@@ -1,10 +1,18 @@
 {
     "run": {
-        "silent": {
-            "type": "bool",
-            "description": "choose to run model without verbose output",
+        "bin": {
+            "type": "int",
+            "description": "bin size for fetching items from database",
             "required": false,
-            "default": false
+            "default": 1000,
+            "min": 1
+        },
+        "cores": {
+            "type": "int",
+            "description": "number of available cores for model run; use \"null\" to use all available cores",
+            "required": false,
+            "default": null,
+            "min": 1
         },
         "force": {
             "type": "bool",
@@ -18,20 +26,32 @@
             "required": false,
             "default": false
         },
-        "bin": {
-            "type": "int",
-            "description": "bin size for fetching items from database",
-            "required": false,
-            "default": 1000,
-            "min": 1
-        },
         "log": {
             "type": "str",
             "description": "path to where to save log output for model run; great for debugging",
             "required": false
+        },
+        "silent": {
+            "type": "bool",
+            "description": "choose to run model without verbose output",
+            "required": false,
+            "default": false
         }
     },
     "population": {
+        "rand": {
+            "type": "bool",
+            "description": "choose to randomly sample population; otherwise read sequentially",
+            "required": false,
+            "default": true
+        },
+        "seed": {
+            "type": "int",
+            "description": "seed for random population generation; use null for no seed",
+            "required": false,
+            "default": null,
+            "min": 0
+        },
         "size": {
             "type": "int",
             "description": "size of population to generate",
@@ -46,45 +66,14 @@
                 "synthea",
                 "mimic"
             ]
-        },
-        "seed": {
-            "type": "int",
-            "description": "seed for random population generation; use null for no seed",
-            "required": false,
-            "default": null,
-            "min": 0
-        },
-        "rand": {
-            "type": "bool",
-            "description": "choose to randomly sample population; otherwise read sequentially",
-            "required": false,
-            "default": true
         }
     },
     "items": {
-        "source": {
-            "type": "list",
-            "descripton": "list of sources to pull data from for model",
-            "required": true,
-            "struct": {
-                "type": "str",
-                "description": "a source to pull data from for model",
-                "options": [
-                    "observations",
-                    "conditions",
-                    "treatments"
-                ]
-            },
-            "min": 1,
-            "max": 3
-        },
-        "min_support": {
-            "type": "float",
-            "description": "minimum frequency of item to be kept as part of model",
+        "count_only": {
+            "type": "bool",
+            "description": "items will only be counted instead of being read: process will terminate after",
             "required": false,
-            "default": 0.0,
-            "min": 0.0,
-            "max": 1.0
+            "default": false
         },
         "max_support": {
             "type": "float",
@@ -94,11 +83,29 @@
             "min": 0.0,
             "max": 1.0
         },
-        "count_only": {
-            "type": "bool",
-            "description": "items will only be counted instead of being read: process will terminate after",
+        "min_support": {
+            "type": "float",
+            "description": "minimum frequency of item to be kept as part of model",
             "required": false,
-            "default": false
+            "default": 0.0,
+            "min": 0.0,
+            "max": 1.0
+        },
+        "source": {
+            "type": "list",
+            "descripton": "list of sources to pull data from for model",
+            "required": true,
+            "struct": {
+                "type": "str",
+                "description": "a source to pull data from for model",
+                "options": [
+                    "conditions",
+                    "observations",
+                    "treatments"
+                ]
+            },
+            "min": 1,
+            "max": 3
         }
     },
     "tree": {
@@ -121,12 +128,16 @@
         }
     },
     "patterns": {
-        "min_support": {
-            "type": "float",
+        "count_only": {
+            "type": "bool",
+            "description": "patterns will only be counted instead of being read: process will terminate after",
             "required": false,
-            "default": 0.0,
-            "min": 0.0,
-            "max": 1.0
+            "default": false
+        },
+        "max_size": {
+            "type": "int",
+            "required": true,
+            "min": 1
         },
         "max_support": {
             "type": "float",
@@ -135,19 +146,27 @@
             "min": 0.0,
             "max": 1.0
         },
-        "max_size": {
-            "type": "int",
-            "required": true,
-            "min": 1
-        },
-        "count_only": {
-            "type": "bool",
-            "description": "patterns will only be counted instead of being read: process will terminate after",
+        "min_support": {
+            "type": "float",
             "required": false,
-            "default": false
+            "default": 0.0,
+            "min": 0.0,
+            "max": 1.0
         }
     },
     "associations": {
+        "count_only": {
+            "type": "bool",
+            "description": "associations will only be counted instead of being read; process will terminate after",
+            "required": false,
+            "default": false
+        },
+        "csv": {
+            "type": "str",
+            "description": "output path to csv file to dump associations",
+            "required": false,
+            "default": null
+        },
         "min_confidence": {
             "type": "float",
             "description": "minimum confidence for an association to be kept",
@@ -165,18 +184,6 @@
         "save": {
             "type": "bool",
             "description": "choose to save associations as csv to specified path",
-            "required": false,
-            "default": false
-        },
-        "csv": {
-            "type": "str",
-            "description": "output path to csv file to dump associations",
-            "required": false,
-            "default": null
-        },
-        "count_only": {
-            "type": "bool",
-            "description": "associations will only be counted instead of being read; process will terminate after",
             "required": false,
             "default": false
         }

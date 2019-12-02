@@ -1,5 +1,6 @@
 
 from knowledge.util.database import DatabaseUtil
+from knowledge.util.error import UserExitError
 from knowledge.util.print import PrintUtil as pr
 
 
@@ -24,14 +25,29 @@ class Population:
         self.items = None
 
 
-    def clear_population(self):
+    def create_tables(self, force=False):
+        tables = ('patients', 'encounters', 'items')
+        if not force:
+            exists = self.database.table_exists(*tables)
+            tables = '", "'.join(exists)
+            if len(exists):
+                cond = pr.print(f'Tables "{tables}" already exist in database '
+                    f'"{self.database.db}". Drop and continue? [Y/n] ', 
+                    inquiry=True, time=True, force=True)
+                if not cond:
+                    raise UserExitError('User chose to terminate process.')
+        self.delete_tables()
+
+
+    def delete_tables(self, tables=[]):
         '''delete/reset current population
         '''
         query = 'DROP TABLE IF EXISTS %s'
-        tables = ('patients', 'encounters', 'items')
+        if len(tables) == 0:
+            tables = ('patients', 'encounters', 'items')
         for tbl in tables:
             self.database.cursor.execute(query % tbl)
-            self.database.cursor.commit()
+            self.database.connection.commit()
 
         self.population = False
         self.source = None
@@ -40,7 +56,7 @@ class Population:
 
 
     def generate_population(self, source, size=None, rand=False, seed=None):
-        '''generate a temporary population table
+        '''generate a population tables
 
         Parameters
         ----------
@@ -58,16 +74,12 @@ class Population:
         '''
         if source == 'synthea':
             db = self.synthea
-            ptbl = 'patients'
-            pcol = 'patient'
-            etbl = 'encounters'
-            ecol = 'encounter'
+            tbl = 'patients'
+            col = 'id'
         elif source == 'mimic':
             db = self.mimic
-            ptbl = 'PATIENTS'
-            pcol = 'SUBJECT_ID'
-            etbl = 'ADMISSIONS'
-            ecol = 'HADM_ID'
+            tbl = 'PATIENTS'
+            col = 'SUBJECT_ID'
         else:
             raise ValueError('Population expected source to be "synthea" or '
                 f'"mimic" but got "{source}".')
@@ -75,26 +87,47 @@ class Population:
         self.source = source
         self.population = True
 
+        pr.print('Generating population patients.', time=True)
         query = f'''
-            CREATE TEMPORARY TABLE patients
+            CREATE TABLE patients
             SELECT
-                {pcol} AS patient
-            FROM {db}.{ptbl}
+                {col} AS patient
+            FROM {db}.{tbl}
             {f"ORDER BY RAND({seed if seed else ''})" if rand else ""}
             {f"LIMIT {size}" if size is not None else ""} '''
         self.database.cursor.execute(query)
-        self.database.cursor.commit()
+        self.database.connection.commit()
+
+        if source == 'synthea':
+            db = self.synthea
+            tbl = 'encounters'
+            col1 = 'id'
+            col2 = 'patient'
+        elif source == 'mimic':
+            db = self.mimic
+            tbl = 'ADMISSIONS'
+            col1 = 'HADM_ID'
+            col2 = 'SUBJECT_ID'
+
+        pr.print('Generating population encounters.', time=True)
+        query = f'''
+            CREATE TABLE encounters
+            SELECT
+                enc.{col2} AS patient,
+                enc.{col1} AS encounter
+            FROM {db}.{tbl} AS enc
+            INNER JOIN patients
+            ON enc.{col2} = patients.patient
+            ORDER BY patient '''
+        self.database.cursor.execute(query)
+        self.database.connection.commit()
 
         query = f'''
-            CREATE TEMPORARY TABLE encounters
-            SELECT
-                {pcol} AS patient,
-                {ecol} AS encounter
-            FROM {db}.{etbl}
-            ORDER BY patient
-            {f"LIMIT {size}" if size is not None else ""} '''
+            CREATE INDEX encounter
+            USING HASH
+            ON encounters(encounter) '''
         self.database.cursor.execute(query)
-        self.database.cursor.commit()
+        self.database.connection.commit()
 
         query = f'''
             SELECT COUNT(*)
@@ -103,24 +136,19 @@ class Population:
             SELECT COUNT(*)
             FROM encounters '''
         self.database.cursor.execute(query)
-        self.patients, self.encounters = self.database.cursor.fetchall()[0]
+        self.patients, self.encounters = [int(row[0])
+            for row in self.database.cursor.fetchall()]
 
     
-    def generate_items(self, min_support=0, max_support=1):
+    def generate_items(self, source, min_support=0, max_support=1):
         '''generate items table with support
 
         Parameters
         ----------
 
         '''
-        
-        valid_source = ('observations', 'treatments', 'conditions')
-
-        if type(source) is str:
-            source = list(source)
-        elif type(source) not in (list, tuple):
-            raise TypeError()
-        if not all(t in valid_source for t in source) or len(source) == 0:
+        source = set(source)
+        if not source.issubset(('observations', 'treatments', 'conditions')):
             raise ValueError()
         if not self.population:
             raise RuntimeError('Must generate a population before generating '
@@ -133,7 +161,7 @@ class Population:
                     CONCAT("O-", obs.code)  AS item,
                     COUNT(*) AS support
                 FROM {self.synthea}.observations AS obs
-                INNER JOIN encounters AS enc
+                INNER JOIN encounters
                 USING(encounter) 
                 GROUP BY item '''
             subquery['conditions'] = f'''
@@ -141,71 +169,72 @@ class Population:
                     CONCAT("C-", cnd.code) AS item,
                     COUNT(*)
                 FROM {self.synthea}.conditions AS cnd
-                INNER JOIN encounters AS enc
+                INNER JOIN encounters
                 USING(encounter)
                 GROUP BY item '''
-            subquery['treatment'] = f'''
+            subquery['treatments'] = f'''
                 SELECT
                     CONCAT("C-", trt.code) AS item,
                     COUNT(*) AS support
-                FROM {self.synthea}.treatments AS trt
-                INNER JOIN encounters AS enc
+                FROM {self.synthea}.medications AS trt
+                INNER JOIN encounters
                 USING(encounter)
                 GROUP BY item '''
         elif self.source == 'mimic':
             subquery = {}
             subquery['observations'] = f'''
                 SELECT
-                    enc.encounter,
-                    CONCAT("O-", itm.LOINC_CODE)
+                    CONCAT("O-", itm.LOINC_CODE)  AS item,
+                    COUNT(*) AS support
                 FROM {self.mimic}.LABEVENTS AS obs
                 INNER JOIN encounters AS enc
-                USING(encounter)
+                ON enc.encounter = obs.HADM_ID
                 INNER JOIN {self.mimic}.D_LABITEMS AS itm
-                USING(ITEMID)'''
+                ON obs.ITEMID = itm.ITEMID
+                WHERE itm.LOINC_CODE IS NOT NULL
+                GROUP BY item '''
             subquery['conditions'] = f'''
                 SELECT
-                    enc.encounter,
-                    CONCAT("C-", cnd.ICD9_CODE)
+                    CONCAT("C-", cnd.ICD9_CODE) AS item,
+                    COUNT(*)
                 FROM {self.mimic}.DIAGNOSES_ICD AS cnd
                 INNER JOIN encounters AS enc
-                USING(encounter) '''
-            subquery['treatment'] = f'''
+                ON enc.encounter = cnd.HADM_ID
+                WHERE cnd.ICD9_CODE IS NOT NULL
+                GROUP BY item '''
+            subquery['treatments'] = f'''
                 SELECT
-                    encounters.encounter,
-                    CONCAT("C-", trt.NDC)
+                    CONCAT("T-", trt.NDC) AS item,
+                    COUNT(*)
                 FROM {self.mimic}.PRESCRIPTIONS AS trt
                 INNER JOIN encounters AS enc
-                USING(encounter) '''
+                ON enc.encounter = trt.HADM_ID
+                WHERE trt.NDC IS NOT NULL
+                GROUP BY item '''
         else:
             raise ValueError('Population expected source to be "synthea" or '
                 f'"mimic" but got "{source}".')
 
-        subquery = {key: val for key, val in subquery.items() 
-            if key in source}
-        query = '\nUNION\n'.join(subquery.values())
-        query += 'ORDER BY support DESC'
+        subquery = [val for key, val in subquery.items() if key in source]
+        query = '''
+            CREATE TABLE items (
+                item VARCHAR(255),
+                support INT UNSIGNED )
+            SELECT *
+            FROM ( '''
+        query += '\nUNION\n'.join(subquery)
+        query += f'''
+            ) AS subquery
+            WHERE support >= {min_support * self.encounters}
+            AND support <= {max_support * self.encounters} '''
         self.database.cursor.execute(query)
-        self.database.cursor.commit()
-
-        query = f'''
-            SELECT SUM(support)
-            FROM items '''
-        self.database.cursor.execute(query)
-        total = self.database.cursor.fetchall()[0][0]
-
-        query = f'''
-            DELETE FROM items
-            WHERE support < {min_support * total}
-            OR support > {max_support * total} '''
-        self.database.cursor.execute(query)
-        self.database.cursor.commit()
+        self.database.connection.commit()
 
         query = f'''
             SELECT COUNT(*)
             FROM items '''
         self.database.cursor.execute(query)
-        self.items = self.database.cursor.fetchall()[0][0]
+        self.items = int(self.database.cursor.fetchall()[0][0])
 
     
     def fetch_patients(self, size=None):
@@ -224,7 +253,7 @@ class Population:
         if self.population:
             query = f'''
                 SELECT patient
-                FROM population
+                FROM patients
                 {f"LIMIT {size}" if size is not None else ""} '''
         else:
             raise RuntimeError('Must generate a population before fetching '
@@ -299,14 +328,8 @@ class Population:
             A list of lists containing the encounter and event codes
             respectively. The table is sorted by the encounter code.
         '''
-
-        valid_source = ('observations', 'treatments', 'conditions')
-
-        if type(source) is str:
-            source = list(source)
-        elif type(source) not in (list, tuple):
-            raise TypeError()
-        if not all(t in valid_source for t in source) or len(source) == 0:
+        source = set(source)
+        if not source.issubset(('observations', 'treatments', 'conditions')):
             raise ValueError()
         if not self.population:
             raise RuntimeError('Must generate a population before fetching '
@@ -316,7 +339,7 @@ class Population:
             subquery = {}
             subquery['observations'] = f'''
                 SELECT
-                    encounters.encounter,
+                    enc.encounter,
                     CONCAT("O-", obs.code)
                 FROM {self.synthea}.observations AS obs
                 INNER JOIN (
@@ -327,7 +350,7 @@ class Population:
                 USING(encounter) '''
             subquery['conditions'] = f'''
                 SELECT
-                    encounters.encounter,
+                    enc.encounter,
                     CONCAT("C-", cnd.code)
                 FROM {self.synthea}.conditions AS cnd
                 INNER JOIN (
@@ -336,11 +359,11 @@ class Population:
                     LIMIT {offset}, {limit}
                 ) AS enc
                 USING(encounter) '''
-            subquery['treatment'] = f'''
+            subquery['treatments'] = f'''
                 SELECT
-                    encounters.encounter,
+                    enc.encounter,
                     CONCAT("C-", trt.code)
-                FROM {self.synthea}.treatments AS trt
+                FROM {self.synthea}.medications AS trt
                 INNER JOIN (
                     SELECT encounter
                     FROM encounters
@@ -359,7 +382,7 @@ class Population:
                     FROM encounters
                     LIMIT {offset}, {limit}
                 ) AS enc
-                USING(encounter)
+                ON enc.encounter = obs.HADM_ID
                 INNER JOIN {self.mimic}.D_LABITEMS AS itm
                 USING(ITEMID)'''
             subquery['conditions'] = f'''
@@ -372,10 +395,10 @@ class Population:
                     FROM encounters
                     LIMIT {offset}, {limit}
                 ) AS enc
-                USING(encounter) '''
-            subquery['treatment'] = f'''
+                ON enc.encounter = cnd.HADM_ID '''
+            subquery['treatments'] = f'''
                 SELECT
-                    encounters.encounter,
+                    enc.encounter,
                     CONCAT("C-", trt.NDC)
                 FROM {self.mimic}.PRESCRIPTIONS AS trt
                 INNER JOIN (
@@ -383,7 +406,7 @@ class Population:
                     FROM encounters
                     LIMIT {offset}, {limit}
                 ) AS enc
-                USING(encounter) '''
+                ON enc.encounter = trt.HADM_ID '''
         else:
             raise ValueError('Population expected source to be "synthea" or '
                 f'"mimic" but got "{source}".')
