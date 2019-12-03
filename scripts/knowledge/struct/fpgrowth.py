@@ -140,7 +140,6 @@ class Fpgrowth:
             subtree = tree.conditional_tree(item, min_support, max_support)
             subtrees.append((subtree, min_support, max_support, max_size))
         subtrees.sort(key=lambda tree: tree[0].root.count_descendents(), reverse=True)
-
         
         global count
         count = Value(c_uint64)
@@ -148,6 +147,8 @@ class Fpgrowth:
         global n
         n = Value(c_uint64)
         n.value = 1
+
+        pr.print(f'Finding patterns on {cores} cores.', time=True)
 
         for item in items:
             support = sum([node.count for node in tree.nodes[item]])
@@ -158,7 +159,6 @@ class Fpgrowth:
             count.value += 1
 
         pool = Pool(processes=cores)
-        pr.print(f'Finding patterns on {cores} cores.', time=True)
         for result in pool.starmap(thread_patterns, subtrees):
             patterns.extend(result)
         if count.value != n.value >> 1:

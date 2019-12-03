@@ -6,6 +6,8 @@ from csv import writer
 from collections import defaultdict
 from itertools import combinations
 from pkg_resources import resource_filename
+from multiprocessing import Pool, Manager, Value
+from ctypes import c_uint64
 
 from knowledge.struct.fpgrowth import Fpgrowth
 from knowledge.util.config import ConfigUtil
@@ -17,6 +19,87 @@ try:
     mysql = True
 except:
     mysql = False
+
+
+count = None
+n = None
+
+
+def chunks(lst, n):
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+
+def write_associations(queue, csv, cols):
+    '''asynchronous queued association csv write
+    '''
+    csvfile = open(csv, 'w', newline='')
+    csvwriter = writer(csvfile, delimiter=',', quotechar='"')
+    csvwriter.writerow(cols)
+    while True:
+        request = queue.get()
+        if request == 'kill':
+            csvfile.close()
+            break
+        else:
+            csvwriter.writerows(request)
+            csvfile.flush()
+
+
+def find_associations(queue, patterns, keys, min_support, min_confidence):
+    '''find associations in pattern chucnk and add to write queue
+    '''
+    inf = float('inf')
+    metrics = {
+        'support':    lambda sAC, sA, sC: sAC,
+        'confidence': lambda sAC, sA, sC: sAC/sA,
+        'lift':       lambda sAC, sA, sC: sAC/sA/sC,
+        'leverage':   lambda sAC, sA, sC: sAC-sA*sC,
+        'conviction': lambda sAC, sA, sC: (1-sC)/(1-sAC/sA) if sAC != sA else inf,
+        'rpf':        lambda sAC, sA, sC: sAC*sAC/sA    }
+    
+    associations = []
+    local_count = 0
+    for pattern in keys:
+        sAC = patterns[pattern]
+        for idx in range(len(pattern)-1,0,-1):
+            for subset in combinations(pattern, r=idx):
+                antecedent = frozenset(subset)
+                consequent = pattern - antecedent
+
+                sA = patterns[antecedent]
+                sC = patterns[consequent]
+
+                score = (metrics['support'](sAC, sA, sC) >= min_support and
+                    metrics['confidence'](sAC, sA, sC) >= min_confidence)
+
+                if score:
+                    if count.value >= n.value:
+                        pr.print(f'Found association {count.value}.', time=True)
+                        with n.get_lock():
+                            n.value <<= 1
+                    
+                    if local_count >= 100000:
+                        queue.put(associations)
+                        associations = []
+                        local_count = 0 
+                        
+                    associations.append((
+                        ','.join(sorted(antecedent)),
+                        ','.join(sorted(consequent)),
+                        metrics['support'](sAC, sA, sC),
+                        metrics['confidence'](sAC, sA, sC),
+                        metrics['lift'](sAC, sA, sC),
+                        metrics['leverage'](sAC, sA, sC),
+                        metrics['conviction'](sAC, sA, sC) if sAC != sA else None,
+                        metrics['rpf'](sAC, sA, sC)))
+
+                    local_count += 1
+                    with count.get_lock():
+                        count.value += 1
+
+    queue.put(associations)
+    associations = []
 
 
 class AssociationModel:
@@ -185,7 +268,7 @@ class AssociationModel:
         self.population.generate_population(source, size=size, rand=rand, seed=seed)
         if size > self.population.encounters:
             pr.print(f'Requested population size of {size} but only found a max '
-                f'of {self.population.encounters} admissions.', time=True)
+                f'of {self.population.encounters} encounters.', time=True)
 
 
     def create_tables(self, force=False):
@@ -272,76 +355,35 @@ class AssociationModel:
 
 
     def find_associations(self, patterns, count_only=False, min_support=0,
-            min_confidence=0, csv=None, save=False):
-        if save:
-            csvfile = open(csv, 'w', newline='')
-            csvwriter = writer(csvfile, delimiter=',', quotechar='"')
+            min_confidence=0, csv=None, save=False, cores=None):
+        '''
+        '''
+        pr.print(f'Balancing patterns into tasks for {cores} cores.', time=True)
+        manager = Manager()
+        queue = manager.Queue(maxsize=10)
+        pool = Pool(processes=cores)
 
-        inf = float('inf')
-        metrics = {
-            'support':    lambda sAC, sA, sC: sAC,
-            'confidence': lambda sAC, sA, sC: sAC/sA,
-            'lift':       lambda sAC, sA, sC: sAC/sA/sC,
-            'leverage':   lambda sAC, sA, sC: sAC-sA*sC,
-            'conviction': lambda sAC, sA, sC: (1-sC)/(1-sAC/sA) if sAC != sA else inf,
-            'rpf':        lambda sAC, sA, sC: sAC*sAC/sA
-        }
+        cols = ('antecedent', 'consequent', 'support', 'confidence', 'lift',
+            'leverage', 'conviction', 'rpf')
+        pool.apply_async(write_associations, (queue, csv, cols))
 
-        associations = []
-        count, n = 0, 1
+        global count, n
+        count = Value(c_uint64)
+        count.value = 0
+        n = Value(c_uint64)
+        n.value = 1
+        chunksize = len(patterns) / cores / 4
 
-        for pattern in patterns.keys():
-            sAC = patterns[pattern]
-            for idx in range(len(pattern)-1,0,-1):
-                for subset in combinations(pattern, r=idx):
-                    antecedent = frozenset(subset)
-                    consequent = pattern - antecedent
+        tasks = [(queue, patterns, keys, min_support, min_confidence) for keys in 
+            chunks(patterns.keys(), chunksize)]
 
-                    sA = patterns[antecedent]
-                    sC = patterns[consequent]
+        pr.print(f'Finding associations on {cores} cores.', time=True)
+        pool.starmap(find_associations, tasks)
+        queue.put('kill')
+        pool.close()
+        pool.join()
 
-                    score = (metrics['support'](sAC, sA, sC) >= min_support and
-                        metrics['confidence'](sAC, sA, sC) >= min_confidence)
+        if count.value != n.value >> 1:
+            pr.print(f'Found association {count.value}.', time=True)
 
-                    if score and count_only:
-                        count += 1
-                        continue
-
-                    if score:
-                        if count == n:
-                            pr.print(f'Found association {count}.', time=True)
-                            n = n << 1
-
-                        if count_only:
-                            count += 1
-                            continue
-                        
-                        if count % 100000 == 0:
-                            if mysql:
-                                self.database.write_rows(associations, 'associations')
-                            if save:
-                                csvwriter.writerows(associations)
-                                csvfile.flush()
-                            associations = []    
-                            
-                        associations.append((
-                            count,
-                            ','.join(sorted(antecedent)),
-                            ','.join(sorted(consequent)),
-                            metrics['support'](sAC, sA, sC),
-                            metrics['confidence'](sAC, sA, sC),
-                            metrics['lift'](sAC, sA, sC),
-                            metrics['leverage'](sAC, sA, sC),
-                            metrics['conviction'](sAC, sA, sC) if sAC != sA else None,
-                            metrics['rpf'](sAC, sA, sC)))
-                        count += 1                
-
-        if count != n >> 1:
-            pr.print(f'Found association {count}.', time=True)
-
-        if not count_only:
-            if mysql:
-                self.database.write_rows(associations, 'associations')
-            if save:
-                csvwriter.writerows(associations)
-                csvfile.close()
+        

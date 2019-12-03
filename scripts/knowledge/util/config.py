@@ -3,6 +3,8 @@ import json
 import re
 import os
 
+from queue import Queue
+
 from knowledge.util.error import ConfigError
 from knowledge.util.print import PrintUtil as pr
 
@@ -16,6 +18,9 @@ class ConfigUtil:
     types = {'str': str, 'int': int, 'bool': bool, 'dict': dict,
         'list': list, 'float': float, 'null': None}
 
+    settings = Queue()
+    use_settings = False
+    
 
     @classmethod
     def file_readable(self, filepath):

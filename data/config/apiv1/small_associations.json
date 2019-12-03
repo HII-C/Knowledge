@@ -16,7 +16,7 @@
     "items": {
         "count_only": false,
         "max_support": 0.5,
-        "min_support": 0.025,
+        "min_support": 0.01,
         "source": [
             "conditions",
             "observations",
@@ -24,21 +24,21 @@
         ]
     },
     "tree": {
-        "load": false,
+        "load": true,
         "pickle": "/home/benjamin/Documents/HII-C/data/models/apiv1/small_association/tree.p",
-        "save": true
+        "save": false
     },
     "patterns": {
         "count_only": false,
-        "max_size": 3,
+        "max_size": 5,
         "max_support": 0.5,
-        "min_support": 0.025
+        "min_support": 0.01
     },
     "associations": {
         "count_only": false,
         "csv": "/home/benjamin/Documents/HII-C/data/models/apiv1/small_association/associations.csv",
         "min_confidence": 0.95,
-        "min_support": 0.05,
+        "min_support": 0.01,
         "save": false
     },
     "database": {
