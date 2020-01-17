@@ -1,26 +1,24 @@
 
-import psutil
 import pickle
+import logging as log
 
 from csv import writer
-from collections import defaultdict
 from itertools import combinations
-from pkg_resources import resource_filename
 from multiprocessing import Pool, Manager, Value
 from ctypes import c_uint64
 
 from knowledge.struct.fpgrowth import Fpgrowth
 from knowledge.util.config import ConfigUtil
-from knowledge.util.error import ConfigError, UserExitError
-from knowledge.util.print import PrintUtil as pr
+from knowledge.util.filesys import FilesysUtil
 
 try:
     from knowledge.struct.population import Population
     mysql = True
-except:
+except ImportError:
     mysql = False
 
 
+# globals for multiprocessing
 count = None
 n = None
 
@@ -32,22 +30,50 @@ def chunks(lst, n):
 
 def write_associations(queue, csv, cols):
     '''asynchronous queued association csv write
+
+    Parameters
+    ----------
+    queue: multiprocessing.Queue
+        File write queue as provided by the multiprocessing manager.
+
+    csv: str
+        String for the filepath to write associations.
+
+    cols: list[str]
+        List of column names for csv output.
     '''
     csvfile = open(csv, 'w', newline='')
     csvwriter = writer(csvfile, delimiter=',', quotechar='"')
     csvwriter.writerow(cols)
-    while True:
+
+    request = queue.get()
+    while request != 'kill':
+        csvwriter.writerows(request)
+        csvfile.flush()
         request = queue.get()
-        if request == 'kill':
-            csvfile.close()
-            break
-        else:
-            csvwriter.writerows(request)
-            csvfile.flush()
+    csvfile.close()
 
 
 def find_associations(queue, patterns, keys, min_support, min_confidence):
     '''find associations in pattern chucnk and add to write queue
+
+    Parameters
+    ----------
+    queue: multiprocessing.Queue
+        File write queue as provided by the multiprocessing manager.
+
+    patterns: dict{frozenset[str]: float}
+        Dictionary of frequent patterns where a frozenset of items map
+        to their corresponding support.
+
+    keys: list[frozenset[str]]
+        List of frozensets that are keys to the patterns dictionary;
+        these patterns will be analyzed for association finding.
+
+    min_support: float
+
+    min_confidence: float
+
     '''
     inf = float('inf')
     metrics = {
@@ -55,8 +81,9 @@ def find_associations(queue, patterns, keys, min_support, min_confidence):
         'confidence': lambda sAC, sA, sC: sAC/sA,
         'lift':       lambda sAC, sA, sC: sAC/sA/sC,
         'leverage':   lambda sAC, sA, sC: sAC-sA*sC,
-        'conviction': lambda sAC, sA, sC: (1-sC)/(1-sAC/sA) if sAC != sA else inf,
-        'rpf':        lambda sAC, sA, sC: sAC*sAC/sA    }
+        'rpf':        lambda sAC, sA, sC: sAC*sAC/sA,
+        'conviction': lambda sAC, sA, sC: (1-sC)/(1-sAC/sA) \
+            if sAC != sA else inf   }
     
     associations = []
     local_count = 0
@@ -75,7 +102,7 @@ def find_associations(queue, patterns, keys, min_support, min_confidence):
 
                 if score:
                     if count.value >= n.value:
-                        pr.print(f'Found association {count.value}.', time=True)
+                        log.info(f'Found association {count.value}.')
                         with n.get_lock():
                             n.value <<= 1
                     
@@ -99,7 +126,6 @@ def find_associations(queue, patterns, keys, min_support, min_confidence):
                         count.value += 1
 
     queue.put(associations)
-    associations = []
 
 
 class AssociationModel:
@@ -108,93 +134,141 @@ class AssociationModel:
             self.population = Population(database)
             self.database = self.population.database
         self.fpgrowth = None
-    
+
 
     @staticmethod
+    def mysql():
+        return mysql
+
+    
+    @staticmethod
     def validate_config(configpath, specspath):
-        '''validates a configuration file for the association model
-        '''
+        'validates a configuration file for the association model'
         config = ConfigUtil.load_config(configpath)
         specs = ConfigUtil.load_specs(specspath)
         config = ConfigUtil.verify_config(specs, config)
 
         tree = config['tree']
-        association = config['associations']        
+        association = config['associations']
+        run = config['run']
+
+        warn = False
+
+        if tree['load'] and tree['save']:
+            log.error('Does not make sense to both load and save tree.')
+            warn = True
         if tree['load']:
             if tree['pickle'] is None:
-                raise ConfigError('Pickled tree path must be given to'
+                log.error('Pickled tree path must be given to '
                     'load pickled tree.')
-            if not ConfigUtil.file_readable(tree['pickle']):
-                raise FileNotFoundError('Pickled tree path must be a '
-                    'path to a readable file.')
+                raise FileNotFoundError
+            if not FilesysUtil.file_readable(tree['pickle']):
+                log.error('Pickled tree path must be a path to '
+                    'a readable file.')
+                raise FileNotFoundError
         if tree['save']:
             if tree['pickle'] is None:
-                raise ConfigError('Pickled tree path must be given to'
+                log.error('Pickled tree path must be given to '
                     'save pickled tree.')
-            if not ConfigUtil.file_writable(tree['pickle']):
-                raise FileNotFoundError('Pickled tree path must be a '
-                    'path to a writable file or directory.')
-        if association['csv']:
-            if not ConfigUtil.file_writable(association['csv']):
-                raise FileNotFoundError('Association csv path must be a '
-                    'path to a writable file or directory.')
+                raise FileNotFoundError
+            if not FilesysUtil.file_writable(tree['pickle']):
+                log.error('Pickled tree path must be a '
+                    'path to a writable file.')
+                raise FileNotFoundError
 
-        if not mysql and not tree['load']:
-            raise ConfigError('No MySQL detected; cannot build tree without'
-                'MySQL environment.')
+        if association['load'] and association['save']:
+            log.error('Does not make sense to both load and save associations.')
+            warn = True
+        if association['load'] and not association['mysql']:
+            log.error('Does not make sense to load associations without '
+                'saving them to mysql database.')
+            warn = True
+        if association['load']:
+            if association['csv'] is None:
+                log.error('A csv path must be given to '
+                    'save associations as csv.')
+            if not FilesysUtil.file_readable(association['csv']):
+                log.error('Association csv path must be a '
+                    'path to a readable file.')
+                raise FileNotFoundError
+        if association['save'] :
+            if association['csv'] is None:
+                log.error('A csv path must be given to '
+                    'save associations as csv.')
+                raise FileNotFoundError
+            if not FilesysUtil.file_writable(association['csv']):
+                log.error('Association csv path must be a '
+                    'path to a writable file.')
+                raise FileNotFoundError
 
-        if (not mysql and association['csv'] is None 
-                and not association['count_only']):
-            raise ConfigError('No MySQL detected; must specify csv location '
-                'to save associations instead of table.')
+        if not mysql:
+            if not tree['load']:
+                log.error('No mysql detected; cannot generate population '
+                    'without mysql environment.')
+                raise RuntimeError
+            if association['mysql']:
+                log.error('No mysql detected; cannot save associations '
+                    'without mysql environment.')
+                log.debug('See "association.mysql" config parameter.')
+                raise RuntimeError
+
+        if run['goal'] == 'tree' and not tree['save']:
+            log.warning('Goal is to generate tree but nothing is ever saved.')
+            warn = True
+        if run['goal'] == 'associations' and not association['mysql'] \
+                and not association['save']:
+            log.warning('Goal is to generate associations but nothing is ever saved.')
+            warn = True
+
+        if warn:
+            log.warning('Continue given config validation warnings? [Y/n]')
+            if input().lower() not in ('y', 'yes'):
+                log.error('User chose to terminate process.')
+                raise RuntimeError
 
         return config
 
 
-    def run(self, config, silent=None):
-        '''runs the fpgrowth model with specified configurations
+    def run(self, config):
+        '''runs the association model with specified configuration
+
         Parameters
         ----------
         config: dict
             A dictionary representation of the JSON config file.
             See documentation for specifications of the config file.
-        silent: bool
-
-
-        Throws
-        ------
-        UserExitError
-            When prompted, the user chose to exit rather than procede.
         '''
 
         force = config['run']['force']
-        write = not (config['items']['count_only'] or
-            config['patterns']['count_only'] or
-            config['associations']['count_only'])
+        goal = config['run']['goal']
 
-        if not write:
-            del self.database.tables['items']
-            del self.database.tables['associations']
-
-        pr.print('Preallocating tables and files for output.', time=True)
+        log.info('Preallocating output tables/files.')
         if not force and config['tree']['save']:
             save = config['tree']['pickle']
-            if ConfigUtil.file_exists(save):
-                cond = pr.print(f'Patterns tree pickle file "{save}" already '
-                    'exists. Delete and continue? [Y/n] ', inquiry=True, 
-                    time=True, force=True)
-                if not cond:
-                    raise UserExitError('User chose to terminate process.')
-
+            if FilesysUtil.file_exists(save):
+                log.warning(f'Patterns tree pickle file "{save}" already '
+                    'exists. Delete and continue? [Y/n]')
+                if input().lower() not in ('y', 'yes'):
+                    log.error('User chose to terminate process.')
+                    raise RuntimeError
+        if not force and config['associations']['save']:
+            save = config['associations']['csv']
+            if FilesysUtil.file_exists(save):
+                log.warning(f'Association output file "{save}" already '
+                    'exists. Delete and continue? [Y/n]')
+                if input().lower() not in ('y', 'yes'):
+                    log.error('User chose to terminate process.')
+                    raise RuntimeError
         if mysql:
-            self.create_tables(force)
+            if config['associations']['mysql']:
+                self.create_tables(force)
             if not config['tree']['load']:
                 self.population.create_tables(force)
 
         if config['tree']['load']:
             load = config['tree']['pickle']
 
-            pr.print(f'Loading pickled patterns tree from "{load}".', time=True)
+            log.info(f'Loading pickled patterns tree from {load}.')
             self.fpgrowth = pickle.load(open(load, 'rb'))
             support = self.fpgrowth.support
             popsize = self.fpgrowth.tree.root.count
@@ -204,25 +278,19 @@ class AssociationModel:
             events = sum(n.count for item in self.fpgrowth.tree.nodes.values()
                 for n in item) - trans
             nodes = sum(len(item) for item in self.fpgrowth.tree.nodes.values())
-            pr.print(f'Tree complete with {len(items)} items, {trans} encounters, '
-                f'{events} events, and {nodes} nodes.', time=True)
-            
-            # if write and mysql:
-            #     pr.print(f'Pushing support for {len(support)} items to '
-            #         'database.', time=True)
-            #     self.database.write_rows(items, 'items')
+            log.info(f'Tree complete with {len(items)} items, {trans} encounters, '
+                f'{events} events, and {nodes} nodes.')
         
         else:
             size = config['population']['size']
 
-            pr.print(f'Generating sample population of size {size}.', time=True)
+            log.info(f'Generating sample population of size {size}.')
             self.generate_population(**config['population'])
 
-            pr.print('First data scan; calculating support for '
-                'population items.', time=True)
+            log.info('First data scan; calculating support for population items.')
             support = self.calculate_support(**config['items'])
 
-            pr.print('Second data scan; building frequent patterns tree.', time=True)
+            log.info('Second data scan; building frequent patterns tree.')
             self.fpgrowth = Fpgrowth(support)
             self.build_tree(config['items']['source'], config['run']['bin'])
 
@@ -231,44 +299,47 @@ class AssociationModel:
             events = sum(n.count for item in self.fpgrowth.tree.nodes.values()
                 for n in item) - trans
             nodes = sum(len(item) for item in self.fpgrowth.tree.nodes.values())
-            pr.print(f'Tree complete with {items} items, {trans} encounters, '
-                f'{events} events, and {nodes} nodes.', time=True)
+            log.info(f'Tree complete with {items} items, {trans} encounters, '
+                f'{events} events, and {nodes} nodes.')
 
         if config['tree']['save']:
             save = config['tree']['pickle']
-            pr.print(f'Saving pickled patterns tree to {save}.', time=True)
+            log.info(f'Saving pickled patterns tree to {save}.')
             pickle.dump(self.fpgrowth, open(save, 'wb'))
+
+        if goal == 'tree':
+            log.info('Model achieved goal to build tree.')
+            return
             
-        pr.print('Beginning reading frequent patterns from tree.', time=True)
+        log.info('Beginning reading frequent patterns from tree.')
         patterns = self.find_patterns(**config['patterns'], 
             cores=config['run']['cores'])
         del self.fpgrowth
 
-        if config['patterns']['count_only']:
-            pr.print('Assoication model run complete.', time=True)
+        if goal == 'patterns':
+            log.info('Model achieved goal to find patterns.')
             return
 
-        pr.print('Analyzing patterns for significant associations.', time=True)
-        self.find_associations(patterns, **config['associations'])
+        log.info('Analyzing patterns for significant associations.')
+        self.find_associations(patterns, **config['associations'],
+            cores=config['run']['cores'])
         del patterns
 
-        if config['associations']['count_only']:
-            pr.print('Assoication model run complete.', time=True)
-            return
-
         if config['run']['index']:
-            pr.print('Creating indexes on all new tables.', time=True)
+            log.info('Creating indexes on all new tables.')
             for table in self.database.tables.keys():
                 self.database.create_all_idxs(table)
 
-        pr.print('Assoication model run complete.', time=True)
+        if goal == 'associations':
+            log.info('Model achieved goal to find associations.')
+            return
 
         
     def generate_population(self, source, size, rand=True, seed=None):
         self.population.generate_population(source, size=size, rand=rand, seed=seed)
         if size > self.population.encounters:
-            pr.print(f'Requested population size of {size} but only found a max '
-                f'of {self.population.encounters} encounters.', time=True)
+            log.warning(f'Requested population size of {size} but only found '
+                f' {self.population.encounters} encounters.')
 
 
     def create_tables(self, force=False):
@@ -276,25 +347,26 @@ class AssociationModel:
             exists = self.database.table_exists(*list(self.database.tables.keys()))
             tables = '", "'.join(exists)
             if len(exists):
-                cond = pr.print(f'Tables "{tables}" already exist in database '
-                    f'"{self.database.db}". Drop and continue? [Y/n] ', 
-                    inquiry=True, time=True, force=True)
-                if not cond:
-                    raise UserExitError('User chose to terminate process.')
+                log.warning(f'Table{"s" if len(tables) > 1 else ""} '
+                    f'"{tables}" already exist in database '
+                    f'"{self.database.db}". Drop and continue? [Y/n] ')
+                if input().lower() not in ('y', 'yes'):
+                    log.error('User chose to terminate process.')
+                    raise RuntimeError
         for table in self.database.tables.keys():
             self.database.create_table(table)
         
 
-    def calculate_support(self, source, min_support, max_support, count_only=False):
-        '''calculate support for itemset; constrain itemset by support bounds
-        '''
+    def calculate_support(self, source, min_support, max_support):
+        'calculate support for itemset; constrain itemset by support bounds'
+        
         self.population.generate_items(source, min_support, max_support)
         items = self.population.fetch_items()
 
         support = {key: val for key, val in items}
 
-        pr.print(f'Found {self.population.items} items in target population '
-            f'on support interval [{min_support}, {max_support}].', time=True)
+        log.info(f'Found {self.population.items} items in target population '
+            f'on support interval [{min_support}, {max_support}].')
 
         return support
 
@@ -311,12 +383,11 @@ class AssociationModel:
 
         for offset in range(0, self.population.encounters, bin_size):
             lmt = min(bin_size, self.population.encounters)
-            pr.print(f'Fetching events for {lmt} encounters.', time=True)
 
+            log.info(f'Fetching events for {lmt} encounters.')
             events = self.population.fetch_events(source, offset, bin_size)
-
-            pr.print(f'Retrieved {len(events)} events; inserting them'
-                ' into the fpgrowth tree.', time=True)
+            log.info(f'Retrieved {len(events)} events; inserting them'
+                ' into the fpgrowth tree.')
             
             encounters = []
             items = set()
@@ -338,8 +409,7 @@ class AssociationModel:
             del items
 
 
-    def find_patterns(self, min_support, max_support, max_size,
-            count_only=False, cores=None):
+    def find_patterns(self, min_support, max_support, max_size, cores=None):
         '''read patterns of of frequent patterns tree
         '''
         encounters = self.fpgrowth.tree.root.count
@@ -354,11 +424,26 @@ class AssociationModel:
         return patterns_dict
 
 
-    def find_associations(self, patterns, count_only=False, min_support=0,
-            min_confidence=0, csv=None, save=False, cores=None):
+    def find_associations(self, patterns, min_support=0, min_confidence=0,
+            csv=None, save=False, cores=None):
+        '''find associations from frequent patterns dictionary
         '''
-        '''
-        pr.print(f'Balancing patterns into tasks for {cores} cores.', time=True)
+        if csv is None:
+            csvfile = FilesysUtil.create_tempfile(suffix='csv', delete=False)
+            csv = csvfile.name
+            csvfile.close()
+            temp = True
+        else:
+            temp = False
+
+        log.info(f'Balancing patterns into tasks for {cores} cores.')
+
+        global count, n
+        count = Value(c_uint64)
+        count.value = 0
+        n = Value(c_uint64)
+        n.value = 1
+
         manager = Manager()
         queue = manager.Queue(maxsize=10)
         pool = Pool(processes=cores)
@@ -367,23 +452,64 @@ class AssociationModel:
             'leverage', 'conviction', 'rpf')
         pool.apply_async(write_associations, (queue, csv, cols))
 
-        global count, n
-        count = Value(c_uint64)
-        count.value = 0
-        n = Value(c_uint64)
-        n.value = 1
-        chunksize = len(patterns) / cores / 4
-
+        chunksize = len(patterns) // (cores * 4)
         tasks = [(queue, patterns, keys, min_support, min_confidence) for keys in 
-            chunks(patterns.keys(), chunksize)]
+            chunks(list(patterns.keys()), chunksize)]
 
-        pr.print(f'Finding associations on {cores} cores.', time=True)
+        log.info(f'Finding associations and writing them to "{csv}".')
         pool.starmap(find_associations, tasks)
         queue.put('kill')
         pool.close()
         pool.join()
 
         if count.value != n.value >> 1:
-            pr.print(f'Found association {count.value}.', time=True)
+            log.info(f'Found association {count.value}.')
 
+        if mysql:
+            log.info('Loading associations into mysql database.')
+            self.load_associations(csv)
+
+        if temp:
+            log.info(f'Deleting temporary associations file "{csv}".')
+            FilesysUtil.delete_file(csv)
+
+        
+    def load_associations(self, csv):
+        query = 'ALTER TABLE associations DISABLE KEYS'
+        self.database.cursor.execute(query)
+        self.database.connection.commit()
+        query = f'''
+            LOAD DATA LOCAL INFILE {csv} INTO TABLE associations
+            FIELDS 
+                TERMINATED BY \',\'
+                ESCAPED BY \'\\\' 
+                OPTIONALLY ENCLOSED BY \'"\'
+            LINES 
+                TERMINATED BY \'\n\'
+            IGNORE 1 LINES (
+                @antecedent,
+                @consequent,
+                @support,
+                @confidence,
+                @lift,
+                @leverage,
+                @conviction,
+                @rpf    )
+            SET
+                antecedent = @antecedent,
+                consequent = @consequent,
+                support = @support,
+                confidence = @confidence,
+                lift = @lift,
+                leverage = @leverage,
+                conviction = @conviction,
+                rpf = @rpf  '''
+        self.database.cursor.execute(query)
+        self.database.connection.commit()
+        query = 'ALTER TABLE associations ENABLE KEYS'
+        self.database.cursor.execute(query)
+        self.database.connection.commit()
+        query = 'OPTIMIZE TABLE associations'
+        self.database.cursor.execute(query)
+        self.database.connection.commit()
         

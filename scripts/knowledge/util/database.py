@@ -2,9 +2,9 @@
 import MySQLdb
 import warnings
 
-from knowledge.util.print import PrintUtil as pr
-from knowledge.util.error import UserExitError
+import logging as log
 
+# supress MySQL warnings
 warnings.filterwarnings('ignore', category=MySQLdb._exceptions.Warning)
 
 class DatabaseUtil:
@@ -12,8 +12,9 @@ class DatabaseUtil:
         if type(database) is DatabaseUtil:
             self = database
         elif type(params) is dict:
-            keys = ('user', 'password', 'db', 'host', 'unix_sock')
-            login = {key:params[key] for key in keys if key in params}
+            keys = ('user', 'password', 'db', 'host', 'unix_socket')
+            login = {key: val for key, val in params.items() 
+                if key in keys and val is not None}
             self.user = params['user']
             self.host = params['host']
             self.db = params['db']
@@ -23,10 +24,9 @@ class DatabaseUtil:
                 self.cursor = self.connection.cursor()
             except MySQLdb._exceptions.OperationalError as err:
                 if err.args[0] == 1049:
-                    term = pr.print(f'Database "{self.db}" does not exist. Create '
-                        'and continue? [Y/n] ', time=True, 
-                        inquiry=True, force=True)
-                    if term:
+                    log.warning(f'Database "{self.db}" does not exist. Create '
+                        'and continue? [Y/n] ')
+                    if input().lower() not in ('y', 'yes'):
                         del login['db']
                         connection = MySQLdb.connect(**login)
                         cursor = connection.cursor()
@@ -38,8 +38,10 @@ class DatabaseUtil:
                         self.connection = MySQLdb.connect(**login)
                         self.cursor = self.connection.cursor()
                     else:
-                        raise UserExitError('User chose to terminate process.')
+                        log.error('User chose to terminate process.')
+                        raise RuntimeError
                 else:
+                    log.error('MySQL login/connection failure.')
                     raise err
 
     def drop_table(self, table):
@@ -117,27 +119,23 @@ class DatabaseUtil:
         tbl_data = self.tables[table]
         if 'primary_idx' in tbl_data and tbl_data['primary_idx'] is not None:
             if len(tbl_data['primary_idx']):
-                pr.print(f'Creating primary index on table "{table}".', time=True)
+                log.info(f'Creating primary index on table "{table}".')
                 self.create_primary_idx(table)
         if 'spatial_idxs' in tbl_data and tbl_data['spatial_idxs'] is not None:
             for idx in tbl_data['spatial_idxs']:
-                pr.print(f'Creating spatial index "{idx}" on '
-                    f'table "{table}".', time=True)
+                log.info(f'Creating spatial index "{idx}" on table "{table}".')
                 self.create_spatial_idx(table, idx)
         if 'hash_idxs' in tbl_data and tbl_data['hash_idxs'] is not None:
             for idx in tbl_data['hash_idxs']:
-                pr.print(f'Creating hash index "{idx}" on '
-                    f'table "{table}".', time=True)
+                log.info(f'Creating hash index "{idx}" on table "{table}".')
                 self.create_hash_idx(table, idx)
         if 'btree_idxs' in tbl_data and tbl_data['btree_idxs'] is not None:
             for idx in tbl_data['btree_idxs']:
-                pr.print(f'Creating btree index "{idx}" on '
-                    f'table "{table}".', time=True)
+                log.info(f'Creating btree index "{idx}" on table "{table}".')
                 self.create_btree_idx(table, idx)
         if 'fulltext_idxs' in tbl_data and tbl_data['fulltext_idxs'] is not None:
             for idx in tbl_data['fulltext_idxs']:
-                pr.print(f'Creating fulltext index "{idx}" on '
-                    f'table "{table}".', time=True)
+                log.info(f'Creating fulltext index "{idx}" on table "{table}".')
                 self.create_fulltext_idx(table, idx)
 
     def write_rows(self, data, table):

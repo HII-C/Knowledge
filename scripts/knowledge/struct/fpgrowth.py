@@ -1,19 +1,20 @@
 
 import pandas as pd
 import numpy as np
+import logging as log
 
 from collections import defaultdict
 from itertools import combinations
 from multiprocessing import Pool, Value
 from ctypes import c_uint64
 
-from knowledge.util.print import PrintUtil as pr
 
-
+# globals for multiprocessing
 count = None
 n = None
 
-def thread_patterns(tree, min_support, max_support, max_size):
+
+def find_patterns(tree, min_support, max_support, max_size):
     '''pattern finding function for a single thread
     '''
     generator = Fpgrowth.generate_patterns(tree, min_support, 
@@ -24,7 +25,7 @@ def thread_patterns(tree, min_support, max_support, max_size):
         if count.value >= n.value:
             with n.get_lock():
                 n.value <<= 1
-            pr.print(f'Found pattern {count.value}.', time=True)
+            log.info(f'Found pattern {count.value}.')
         with count.get_lock():
             count.value += 1
     return patterns
@@ -35,8 +36,10 @@ class Fpgrowth:
 
     Parameters
     ----------
-    support: dict
-        A dictionary mapping the names of items to their support.
+    support: dict{str: int}
+        A dictionary mapping the names of items to their support;
+        not the support here is an integer between zero and the 
+        number of transactions, not a float between 0 ad 1.
     '''
 
     def __init__(self, support):
@@ -53,29 +56,14 @@ class Fpgrowth:
         transactions: list[list]
             A list of transactions, which are each a list of items.
 
-            For example,
-            [[a, b, c, d],
-             [b, d],
-             [d, a, c],
-             [c, e, a]]
-
         Returns
         -------
         matrix: numpy.ndarray
             A numpy array representing the bool matrix of the transactions.
 
-            For example,
-            [[True,  True,  True,  True,  False],
-             [False, True,  False, True,  False],
-             [True,  False, True,  True,  False],
-             [False, False, True,  False, True ]]
-
         items: tuple
             A list containing the items names for the matrix, which 
             correspond to the columns of the matrix.
-
-            For example,
-            (a, b, c, d, e)
         '''
 
         unique = set()
@@ -101,19 +89,10 @@ class Fpgrowth:
         matrix: numpy.ndarray
             A numpy array representing the bool matrix of the transactions.
 
-            For example,
-            [[True,  True,  True,  True,  False],
-             [False, True,  False, True,  False],
-             [True,  False, True,  True,  False],
-             [False, False, True,  False, True ]]
-
         items: tuple
             A list containing the items names for the matrix, which 
             correspond to the columns of the matrix. This set of items must be 
             a subset of the support attribute.
-
-            For example,
-            (a, b, c, d, e)
 
         silent: bool = False
             If true, this process will not print algorithm progress messages;
@@ -129,9 +108,32 @@ class Fpgrowth:
 
     def find_patterns(self, tree, min_support=0, max_support=1, 
             max_size=0, cores=None):
+        '''finds patterns from tree using multiprocessing
+
+        Parameters
+        ----------
+        tree: Tree
+            The tree to read patterns from
+
+        min_support: int
+            The minimum support of a pattern for it to be included in the
+            list of frequent patterns.
+
+        max_support: int
+            
+        max_size: int
+
+        cores: int/None
+            Number of cores to utilize; default is None, which will auto detect
+            the number of cores available to use.
+
+        Returns
+        -------
+        patterns: list[list[float, list[str]]]
+            A list of patterns, where each pattern is a list containing
+            the pattern support value and list of items in the pattern.
         '''
-        '''
-        pr.print(f'Balancing tree into tasks for {cores} cores.', time=True)
+        log.info(f'Balancing tree into tasks for {cores} cores.')
         items = tree.nodes.keys()
         subtrees = []
         patterns = []
@@ -148,23 +150,26 @@ class Fpgrowth:
         n = Value(c_uint64)
         n.value = 1
 
-        pr.print(f'Finding patterns on {cores} cores.', time=True)
+        log.info(f'Finding patterns tree root branch.')
 
         for item in items:
             support = sum([node.count for node in tree.nodes[item]])
             patterns.append((support, (item,)))
             if count.value >= n.value:
-                pr.print(f'Found pattern {count.value}.', time=True)
+                log.info(f'Found pattern {count.value}.')
                 n.value <<= 1
             count.value += 1
 
+        log.info(f'Now finding remaining patterns on {cores} cores.')
+
         pool = Pool(processes=cores)
-        for result in pool.starmap(thread_patterns, subtrees):
+        for result in pool.starmap(find_patterns, subtrees):
             patterns.extend(result)
         if count.value != n.value >> 1:
-            pr.print(f'Found pattern {count.value}.', time=True)
+            log.info(f'Found pattern {count.value}.')
         pool.close()
         pool.join()
+        
         return patterns
 
         
@@ -181,6 +186,8 @@ class Fpgrowth:
         min_support: int
             The minimum support of a pattern for it to be included in the
             list of frequent patterns.
+
+        max_support: int
 
         max_size: int
 

@@ -1,1 +1,1 @@
-# Fpgrowth Strucutre
+# Fpgrowth Structure

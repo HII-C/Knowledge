@@ -1,6 +1,6 @@
 {
     "run": {
-        "bin": 1000,
+        "bin": 10000,
         "cores": 4,
         "force": false,
         "index": true,
@@ -9,13 +9,13 @@
     },
     "population": {
         "rand": true,
-        "seed": 4231,
+        "seed": 1324,
         "size": 60000,
         "source": "mimic"
     },
     "items": {
         "count_only": false,
-        "max_support": 0.5,
+        "max_support": 0.75,
         "min_support": 0.01,
         "source": [
             "conditions",
@@ -31,7 +31,7 @@
     "patterns": {
         "count_only": false,
         "max_size": 5,
-        "max_support": 0.5,
+        "max_support": 0.8,
         "min_support": 0.01
     },
     "associations": {
@@ -39,17 +39,17 @@
         "csv": "/home/benjamin/Documents/HII-C/data/models/apiv1/small_association/associations.csv",
         "min_confidence": 0.95,
         "min_support": 0.01,
-        "save": false
+        "mysql": true
     },
     "database": {
         "user": "python",
         "host": "localhost",
-        "db": "APIv1",
-        "password": "",
+        "db": "apiv1",
+        "password": null,
         "tables": {
             "associations": {
                 "schema": [
-                    "association_id MEDIUMINT UNSIGNED",
+                    "association_id MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT",
                     "antecedent VARCHAR(255)",
                     "consequent VARCHAR(255)",
                     "support FLOAT",
@@ -57,9 +57,10 @@
                     "lift FLOAT",
                     "leverage FLOAT",
                     "conviction FLOAT",
-                    "rpf FLOAT"
+                    "rpf FLOAT",
+                    "PRIMARY KEY (association_id)"
                 ],
-                "primary_idx": [ "association_id" ],
+                "primary_idx": [],
                 "btree_idxs": {},
                 "hash_idxs": {
                     "antecedent": [ "antecedent" ],

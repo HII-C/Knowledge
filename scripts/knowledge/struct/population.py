@@ -1,7 +1,8 @@
 
+import logging as log
+
 from knowledge.util.database import DatabaseUtil
 from knowledge.util.error import UserExitError
-from knowledge.util.print import PrintUtil as pr
 
 
 class Population:
@@ -31,12 +32,14 @@ class Population:
             exists = self.database.table_exists(*tables)
             tables = '", "'.join(exists)
             if len(exists):
-                cond = pr.print(f'Tables "{tables}" already exist in database '
-                    f'"{self.database.db}". Drop and continue? [Y/n] ', 
-                    inquiry=True, time=True, force=True)
-                if not cond:
-                    raise UserExitError('User chose to terminate process.')
-        self.delete_tables()
+                log.warning(f'Table{"s" if len(tables) > 1 else ""} '
+                    f'"{tables}" already exist in database '
+                    f'"{self.database.db}". Drop and continue? [Y/n] ')
+                if input().lower() not in ('y', 'yes'):
+                    log.error('User chose to terminate process.')
+                    raise RuntimeError
+        for table in self.database.tables.keys():
+            self.database.create_table(table)
 
 
     def delete_tables(self, tables=[]):
@@ -87,7 +90,7 @@ class Population:
         self.source = source
         self.population = True
 
-        pr.print('Generating population patients.', time=True)
+        log.info('Generating population patients.')
         query = f'''
             CREATE TABLE patients
             SELECT
@@ -109,7 +112,7 @@ class Population:
             col1 = 'HADM_ID'
             col2 = 'SUBJECT_ID'
 
-        pr.print('Generating population encounters.', time=True)
+        log.info('Generating population encounters.', time=True)
         query = f'''
             CREATE TABLE encounters
             SELECT

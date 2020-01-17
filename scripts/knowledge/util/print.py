@@ -3,6 +3,7 @@ import math
 import os
 import re
 import time
+import subprocess
 
 from datetime import datetime
 from getpass import getpass
@@ -39,9 +40,8 @@ class PrintUtil:
 
     @classmethod
     def render_rows(self, string):
-        rows, cols = os.popen('stty size', 'r').read().split()
-        rows = int(rows)
-        cols = int(cols)
+        _, cols = map(int, subprocess.run(('stty', 'size'), 
+            stdout=subprocess.PIPE).stdout.decode().replace('\n', '').split())
         return sum(self.render_width(line) // cols + 1 for line 
             in string.split('\n'))
 

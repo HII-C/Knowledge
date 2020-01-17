@@ -20,6 +20,17 @@
             "required": false,
             "default": false
         },
+        "goal": {
+            "type": "str",
+            "description": "what you want the module to create; model will stpo after finding these",
+            "required": false,
+            "default": "associations",
+            "options": [
+                "tree",
+                "patterns",
+                "associations"
+            ]
+        },
         "index": {
             "type": "bool",
             "description": "create specified indexes on new tables after run complete",
@@ -29,13 +40,21 @@
         "log": {
             "type": "str",
             "description": "path to where to save log output for model run; great for debugging",
-            "required": false
-        },
-        "silent": {
-            "type": "bool",
-            "description": "choose to run model without verbose output",
             "required": false,
-            "default": false
+            "defualt": null
+        },
+        "verbosity": {
+            "type": "str",
+            "description": "verbosity level of log output",
+            "required": false,
+            "default": "info",
+            "options": [
+                "silent",
+                "info",
+                "debug",
+                "warn",
+                "error"
+            ]
         }
     },
     "population": {
@@ -69,12 +88,6 @@
         }
     },
     "items": {
-        "count_only": {
-            "type": "bool",
-            "description": "items will only be counted instead of being read: process will terminate after",
-            "required": false,
-            "default": false
-        },
         "max_support": {
             "type": "float",
             "description": "maximum frequency of item to be kept as part of model",
@@ -109,16 +122,17 @@
         }
     },
     "tree": {
-        "pickle": {
-            "type": "str",
-            "description": "path to where tree pickle will be saved to or loaded from",
-            "required": false
-        },
         "load": {
             "type": "bool",
             "description": "choose to load pickled tree from path",
             "required": false,
             "default": false
+        },
+        "pickle": {
+            "type": "str",
+            "description": "path to where tree pickle will be saved to or loaded from",
+            "required": false,
+            "default": null
         },
         "save": {
             "type": "bool",
@@ -128,12 +142,6 @@
         }
     },
     "patterns": {
-        "count_only": {
-            "type": "bool",
-            "description": "patterns will only be counted instead of being read: process will terminate after",
-            "required": false,
-            "default": false
-        },
         "max_size": {
             "type": "int",
             "required": true,
@@ -155,17 +163,17 @@
         }
     },
     "associations": {
-        "count_only": {
-            "type": "bool",
-            "description": "associations will only be counted instead of being read; process will terminate after",
-            "required": false,
-            "default": false
-        },
         "csv": {
             "type": "str",
-            "description": "output path to csv file to dump associations",
+            "description": "output path to csv file to dump associations; otherwise a temporary will be used",
             "required": false,
             "default": null
+        },
+        "load": {
+            "type": "bool",
+            "description": "if true, associations will be loaded using the csv file path provided",
+            "required": false,
+            "default": false
         },
         "min_confidence": {
             "type": "float",
@@ -181,9 +189,15 @@
             "min": 0.0,
             "max": 1.0
         },
+        "mysql": {
+            "type": "bool",
+            "description": "if true, found associations will be loaded into mysql database",
+            "required": false,
+            "default": false
+        },
         "save": {
             "type": "bool",
-            "description": "choose to save associations as csv to specified path",
+            "description": "if true, associations csv file will not be deleted",
             "required": false,
             "default": false
         }
@@ -209,7 +223,7 @@
             "description": "mysql password",
             "required": false
         },
-        "sock": {
+        "unix_socket": {
             "type": "str",
             "description": "mysql connection socket",
             "required": false

@@ -5,12 +5,11 @@ import math
 from argparse import ArgumentParser
 from collections import defaultdict
 
-from knowledge.util.config import ConfigUtil
+from knowledge.util.filesys import FilesysUtil
 from knowledge.util.print import PrintUtil as pr
 
 
 class CsvUtil:
-    
     @classmethod
     def analyze_csv(self, filepath, skip=0):
         pr.print(f'Analyzing CSV file from {args.csv}.', time=True)
@@ -20,7 +19,7 @@ class CsvUtil:
         with open(filepath, 'r') as csvfile:
             reader = csv.reader(csvfile, delimiter=",", quotechar='"')
             cols = reader.__next__()
-            for a in range(skip):
+            for _ in range(skip):
                 reader.__next__()
             length = len(cols)
             pr.print(f'Found {length} columns in file.', time=True)
@@ -92,7 +91,7 @@ if __name__ == '__main__':
     args = argparser.parse_args()
     
 
-    if not ConfigUtil.file_readable(args.csv):
+    if not FilesysUtil.file_readable(args.csv):
         raise ValueError(f'File at {args.csv} does not exist or is not readable.')
 
     CsvUtil.analyze_csv(args.csv, skip=args.skip)
