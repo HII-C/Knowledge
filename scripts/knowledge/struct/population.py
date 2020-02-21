@@ -11,6 +11,7 @@ class Population:
     must call `generate_population` to create population before
     fetching patients, encounters or events
     '''
+    
     def __init__(self, database):
         self.database = DatabaseUtil(params=database)
 
@@ -42,12 +43,21 @@ class Population:
             self.database.create_table(table)
 
 
-    def delete_tables(self, tables=[]):
-        '''delete/reset current population
-        '''
+    def delete_tables(self, tables=[], force=False):
+        'delete/reset current population'
         query = 'DROP TABLE IF EXISTS %s'
         if len(tables) == 0:
             tables = ('patients', 'encounters', 'items')
+        if not force:
+            exists = self.database.table_exists(*tables)
+            if len(exists):
+                exists = '", "'.join(exists)
+                log.warning(f'Table{"s" if len(exists) > 1 else ""} '
+                    f'"{exists}" already exist in database '
+                    f'"{self.database.db}". Drop and continue? [Y/n] ')
+                if input().lower() not in ('y', 'yes'):
+                    log.error('User chose to terminate process.')
+                    raise RuntimeError
         for tbl in tables:
             self.database.cursor.execute(query % tbl)
             self.database.connection.commit()
@@ -112,7 +122,7 @@ class Population:
             col1 = 'HADM_ID'
             col2 = 'SUBJECT_ID'
 
-        log.info('Generating population encounters.', time=True)
+        log.info('Generating population encounters.')
         query = f'''
             CREATE TABLE encounters
             SELECT

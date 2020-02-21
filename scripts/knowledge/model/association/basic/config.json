@@ -1,0 +1,37 @@
+{
+    "run": {
+        "bin": 10000,
+        "cores": 4,
+        "force": false,
+        "source": "transactions",
+        "goal": "associations",
+        "log": null,
+        "verbosity": "info"
+    },
+    "items": {
+        "max_support": 0.75,
+        "min_support": 0.01,
+        "source": [
+            "conditions",
+            "observations",
+            "treatments"
+        ]
+    },
+    "tree": {
+        "file": null,
+        "save": true
+    },
+    "patterns": {
+        "file": null,
+        "max_size": 5,
+        "max_support": 0.8,
+        "min_support": 0.01,
+        "save": true
+    },
+    "associations": {
+        "file": null,
+        "min_confidence": 0.95,
+        "min_support": 0.01,
+        "save": true
+    }
+}

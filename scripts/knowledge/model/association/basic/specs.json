@@ -1,0 +1,166 @@
+{
+    "run": {
+        "bin": {
+            "type": "int",
+            "description": "bin size for fetching items from database",
+            "required": false,
+            "default": 1000,
+            "min": 1
+        },
+        "cores": {
+            "type": "int",
+            "description": "number of available cores for model run; use \"null\" to use all available cores",
+            "required": false,
+            "default": null,
+            "min": 1
+        },
+        "force": {
+            "type": "bool",
+            "description": "choose to force file/table changes; no prompting",
+            "required": false,
+            "default": false
+        },
+        "goal": {
+            "type": "str",
+            "description": "what you want the module to create; model will stop after finding these",
+            "required": false,
+            "default": "associations",
+            "options": [
+                "tree",
+                "patterns",
+                "associations"
+            ]
+        },
+        "log": {
+            "type": "str",
+            "description": "path to where to save log output for model run; great for debugging",
+            "required": false,
+            "defualt": null,
+            "file": "writeable"
+        },
+        "source": {
+            "type": "str",
+            "description": "where to start the module run from; all previous steps will skip",
+            "required": false,
+            "default": "none",
+            "options": [
+                "transactions",
+                "tree",
+                "patterns"
+            ]
+        },
+        "verbosity": {
+            "type": "str",
+            "description": "verbosity level of log output",
+            "required": false,
+            "default": "info",
+            "options": [
+                "notset",
+                "debug",
+                "info",
+                "warn",
+                "error",
+                "fatal"
+            ]
+        }
+    },
+    "transactions": {
+        "file": {
+            "type": "str",
+            "description": "path to where transactions are loaded from",
+            "required": false,
+            "default": null
+        },
+        "max_support": {
+            "type": "float",
+            "description": "maximum frequency of item to be kept as part of model",
+            "required": false,
+            "default": 1.0,
+            "min": 0.0,
+            "max": 1.0
+        },
+        "min_support": {
+            "type": "float",
+            "description": "minimum frequency of item to be kept as part of model",
+            "required": false,
+            "default": 0.0,
+            "min": 0.0,
+            "max": 1.0
+        }
+    },
+    "tree": {
+        "file": {
+            "type": "str",
+            "description": "path to where tree pickle will be saved to or loaded from",
+            "required": false,
+            "default": null
+        },
+        "save": {
+            "type": "bool",
+            "description": "choose to save pickled tree to specified path",
+            "required": false,
+            "default": false
+        }
+    },
+    "patterns": {
+        "file": {
+            "type": "str",
+            "description": "",
+            "required": false,
+            "default": null
+        },
+        "max_size": {
+            "type": "int",
+            "required": true,
+            "min": 1
+        },
+        "max_support": {
+            "type": "float",
+            "required": false,
+            "default": 1.0,
+            "min": 0.0,
+            "max": 1.0
+        },
+        "min_support": {
+            "type": "float",
+            "required": false,
+            "default": 0.0,
+            "min": 0.0,
+            "max": 1.0
+        },
+        "save": {
+            "type": "bool",
+            "description": "",
+            "required": false,
+            "default": true
+        }
+    },
+    "associations": {
+        "file": {
+            "type": "str",
+            "description": "output path to csv file to dump associations; otherwise a temporary will be used",
+            "required": false,
+            "default": null
+        },
+        "min_confidence": {
+            "type": "float",
+            "description": "minimum confidence for an association to be kept",
+            "required": false,
+            "min": 0.0,
+            "max": 1.0
+        },
+        "min_support": {
+            "type": "float",
+            "description": "minimum support for an association to be kept",
+            "required": false,
+            "min": 0.0,
+            "max": 1.0
+        },
+        "save": {
+            "type": "bool",
+            "description": "if true, associations csv file will be saved",
+            "required": false,
+            "default": true
+        }
+    }
+}

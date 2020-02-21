@@ -1,5 +1,6 @@
 
 import os
+import sys
 import tempfile
 import subprocess
 import logging as log
@@ -36,11 +37,13 @@ class FilesysUtil:
 
     @classmethod
     def create_tempfile(self, suffix=None, delete=True):
+        'creates a temporary file'
         return tempfile.NamedTemporaryFile(suffix=suffix, delete=delete)
 
     
     @classmethod
     def delete_file(self, filepath):
+        'deletes a file'
         os.remove(filepath)
 
 
@@ -81,3 +84,13 @@ class FilesysUtil:
     @classmethod
     def compress(self, source, target=None, keep=False):
         pass
+
+
+    @classmethod
+    def package_resource(self, package, resource):
+        'get filepath of a package file'
+        try:
+            module = os.path.dirname(sys.modules[package].__file__)
+            return os.path.join(module, resource)
+        except:
+            return None

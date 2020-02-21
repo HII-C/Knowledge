@@ -1,4 +1,6 @@
 
+import gzip
+import csv
 import pandas as pd
 import numpy as np
 import logging as log
@@ -9,14 +11,23 @@ from multiprocessing import Pool, Value
 from ctypes import c_uint64
 
 
-# globals for multiprocessing
 count = None
 n = None
 
 
+def mulitopen(filepath, **kwargs):
+    'autodetect compressed file'
+
+    if filepath.split('.')[-1] == 'gz':
+        data = gzip.open(filepath, **kwargs)
+    else:
+        data = open(filepath, **kwargs)
+    return data
+
+
 def find_patterns(tree, min_support, max_support, max_size):
-    '''pattern finding function for a single thread
-    '''
+    'pattern finding function for a single thread'
+
     generator = Fpgrowth.generate_patterns(tree, min_support, 
         max_support, max_size)
     patterns = []
@@ -39,140 +50,13 @@ class Fpgrowth:
     support: dict{str: int}
         A dictionary mapping the names of items to their support;
         not the support here is an integer between zero and the 
-        number of transactions, not a float between 0 ad 1.
-    '''
+        number of transactions, not a float between 0 ad 1. '''
 
     def __init__(self, support):
         self.tree = Tree()
         self.support = support
-    
-
-    @staticmethod
-    def matrix(transactions):
-        '''converts list of transactions into a sparse matrix
-
-        Parameters
-        ----------
-        transactions: list[list]
-            A list of transactions, which are each a list of items.
-
-        Returns
-        -------
-        matrix: numpy.ndarray
-            A numpy array representing the bool matrix of the transactions.
-
-        items: tuple
-            A list containing the items names for the matrix, which 
-            correspond to the columns of the matrix.
-        '''
-
-        unique = set()
-        for trans in transactions:
-            for item in trans:
-                unique.add(item)
-
-        matrix = np.zeros((len(transactions),len(unique)), dtype=bool)
-        items = {key: val for val, key in enumerate(unique)}
-
-        for idx, trans in enumerate(transactions):
-            for item in trans:
-                matrix[idx, items[item]] = True
-
-        return matrix, tuple(unique)
 
 
-    def build_tree(self, matrix, items, silent=False):
-        '''appends transactions to tree
-
-        Parameters
-        ----------
-        matrix: numpy.ndarray
-            A numpy array representing the bool matrix of the transactions.
-
-        items: tuple
-            A list containing the items names for the matrix, which 
-            correspond to the columns of the matrix. This set of items must be 
-            a subset of the support attribute.
-
-        silent: bool = False
-            If true, this process will not print algorithm progress messages;
-            default is false.
-        '''
-
-        for i in range(len(matrix)):
-            itemset = [item for cond, item in zip(matrix[i], items) if cond 
-                and item in self.support]
-            itemset.sort(key=self.support.get, reverse=True)
-            self.tree.insert_itemset(itemset)
-
-
-    def find_patterns(self, tree, min_support=0, max_support=1, 
-            max_size=0, cores=None):
-        '''finds patterns from tree using multiprocessing
-
-        Parameters
-        ----------
-        tree: Tree
-            The tree to read patterns from
-
-        min_support: int
-            The minimum support of a pattern for it to be included in the
-            list of frequent patterns.
-
-        max_support: int
-            
-        max_size: int
-
-        cores: int/None
-            Number of cores to utilize; default is None, which will auto detect
-            the number of cores available to use.
-
-        Returns
-        -------
-        patterns: list[list[float, list[str]]]
-            A list of patterns, where each pattern is a list containing
-            the pattern support value and list of items in the pattern.
-        '''
-        log.info(f'Balancing tree into tasks for {cores} cores.')
-        items = tree.nodes.keys()
-        subtrees = []
-        patterns = []
-
-        for item in items:
-            subtree = tree.conditional_tree(item, min_support, max_support)
-            subtrees.append((subtree, min_support, max_support, max_size))
-        subtrees.sort(key=lambda tree: tree[0].root.count_descendents(), reverse=True)
-        
-        global count
-        count = Value(c_uint64)
-        count.value = 0
-        global n
-        n = Value(c_uint64)
-        n.value = 1
-
-        log.info(f'Finding patterns tree root branch.')
-
-        for item in items:
-            support = sum([node.count for node in tree.nodes[item]])
-            patterns.append((support, (item,)))
-            if count.value >= n.value:
-                log.info(f'Found pattern {count.value}.')
-                n.value <<= 1
-            count.value += 1
-
-        log.info(f'Now finding remaining patterns on {cores} cores.')
-
-        pool = Pool(processes=cores)
-        for result in pool.starmap(find_patterns, subtrees):
-            patterns.extend(result)
-        if count.value != n.value >> 1:
-            log.info(f'Found pattern {count.value}.')
-        pool.close()
-        pool.join()
-        
-        return patterns
-
-        
     @classmethod
     def generate_patterns(self, tree, min_support=0, max_support=1, max_size=0):
         '''recursively generates frequent patterns off of tree
@@ -194,8 +78,7 @@ class Fpgrowth:
 
         Yields
         ------
-        pattern: tuple(float, list[str])
-        '''
+        pattern: tuple(float, list[str])    '''
 
         items = tree.nodes.keys()
         if tree.is_path():
@@ -217,6 +100,168 @@ class Fpgrowth:
                         min_support, max_support, max_size):
                     yield support, itemset
 
+        
+    @classmethod
+    def calculate_support(self, filepath):
+        csvfile = mulitopen(filepath, mode='r')
+        csvreader = csv.reader(csvfile, delimiter=',', quotechar='"')
+        count = 0
+        n = 1
+
+        _, *items = next(csvreader)
+        support = [0]*len(items)
+        for transaction in csvreader:
+            for item, cond in enumerate(transaction[1:]):
+                if int(cond):
+                    support[item] += 1
+                count += 1
+                if count == n:
+                    log.info(f'Processed code {count}.')
+                    n <<= 1
+        support = dict(zip(items, support))
+
+        # alterate file format
+
+        # support = defaultdict(int)
+        # for transaction in csvreader:
+        #     for code in transaction:
+        #         support[code] += 1
+        #         count += 1
+        #         if count == n:
+        #             log.info(f'Processed code {count}.')
+        #             n <<= 1
+
+        if count != n >> 1:
+            log.info(f'Processed code {count}.')
+        csvfile.close()
+
+        return support
+
+    
+    @classmethod
+    def load_patterns(self, filepath):
+        csvfile = mulitopen(filepath, mode='r')
+        csvwriter = csv.reader(csvfile, delimiter=',', quotechar='"')
+        patterns = {}
+
+        for row in csvwriter:
+            patterns[frozenset(row[:-1])] = int(row[-1])
+
+        csvfile.close()
+        return patterns
+
+
+    @classmethod
+    def write_patterns(self, patterns, filepath):
+        csvfile = mulitopen(filepath, mode='w')
+        csvwriter = csv.writer(csvfile, delimiter=',', quotechar='"')
+
+        for codes, support in patterns.items():
+            csvwriter.writerow((*codes, support))
+
+        csvfile.close()
+
+
+    def load_transactions(self, filepath):
+        csvfile = mulitopen(filepath, mode='r')
+        csvreader = csv.reader(csvfile, delimiter=',', quotechar='"')
+        count = 0
+        n = 1
+        
+        _, *items = next(csvreader)
+        for transaction in csvreader:
+            itemset = [item for cond, item in zip(transaction[1:], items) 
+                if int(cond) and item in self.support]
+            itemset.sort(key=self.support.get, reverse=True)
+            self.tree.insert_itemset(itemset)
+            count += 1
+            if count == n:
+                log.info(f'Processed transaction {count}.')
+                n <<= 1
+
+        # alternate file format
+
+        # for transaction in csvreader:
+        #     self.tree.insert_itemset(transaction)
+        #     count += 1
+        #     if count == n:
+        #         log.info(f'Processed transaction {count}.')
+        #         n <<= 1
+
+        if count != n >> 1:
+            log.info(f'Processed transaction {count}.')
+        csvfile.close()
+
+
+    def find_patterns(self, tree=None, min_support=0, max_support=1, 
+            max_size=0, cores=None):
+        '''finds patterns from tree using multiprocessing
+
+        Parameters
+        ----------
+        tree: Tree
+            The tree to read patterns from
+
+        min_support: float
+            The minimum support of a pattern for it to be included in the
+            list of frequent patterns.
+
+        max_support: float
+            
+        max_size: int
+
+        cores: int/None
+            Number of cores to utilize; default is None, which will auto detect
+            the number of cores available to use.
+
+        Returns
+        -------
+        patterns: list[list[float, list[str]]]
+            A list of patterns, where each pattern is a list containing
+            the pattern support value and list of items in the pattern. '''
+        
+        tree = self.tree if tree is None else tree
+        min_support = min_support * tree.root.count
+        max_support = max_support * tree.root.count
+        items = tree.nodes.keys()
+        subtrees = []
+        patterns = []
+
+        log.info(f'Balancing tree into tasks for {cores} cores.')
+
+        for item in items:
+            subtree = tree.conditional_tree(item, min_support, max_support)
+            subtrees.append((subtree, min_support, max_support, max_size))
+        subtrees.sort(key=lambda tree: tree[0].root.count_descendents(), reverse=True)
+        
+        global count, n
+        count = Value(c_uint64)
+        count.value = 0
+        n = Value(c_uint64)
+        n.value = 1
+
+        log.info(f'Finding patterns from root node.')
+
+        for item in items:
+            support = sum([node.count for node in tree.nodes[item]])
+            patterns.append((support, (item,)))
+            if count.value >= n.value:
+                log.info(f'Found pattern {count.value}.')
+                n.value <<= 1
+            count.value += 1
+
+        log.info(f'Now finding remaining patterns on {cores} cores.')
+
+        pool = Pool(processes=cores)
+        for result in pool.starmap(find_patterns, subtrees):
+            patterns.extend(result)
+        if count.value != n.value >> 1:
+            log.info(f'Found pattern {count.value}.')
+        pool.close()
+        pool.join()
+
+        return {frozenset(pattern[1]): pattern[0] for pattern in patterns}
+
 
 class Tree:
     '''a tree structure with variable length, unordered children
@@ -224,8 +269,7 @@ class Tree:
     Parameters
     ----------
     root: str/int/float = None
-        The value of the root node; default is None.
-    '''
+        The value of the root node; default is None.    '''
 
     def __init__(self, root=None):
         self.root = Node(root)
@@ -283,6 +327,10 @@ class Tree:
             node = list(node.children.values())[0]
         return len(node.children) == 0
 
+    
+    def print(self):
+        pass
+
 
 class Node:
     '''an element in a tree structure
@@ -296,8 +344,7 @@ class Node:
         What value to initialize the count of the node on; default is 1.
 
     parent: Node = None
-        The parent node of the node being constructed; default is None type.
-    '''
+        The parent node of the node being constructed; default is None type.    '''
 
     def __init__(self, item, count=1, parent=None):
         self.item = item
@@ -306,11 +353,8 @@ class Node:
         self.parent = parent
 
 
-    def count_descendents(self, n=None):
-        if n is not None and n <= 0:
-            return 1
-        else:
-            return sum(node.count_descendents() for node in self.children.values()) + 1
+    def count_descendents(self):
+        return sum(node.count_descendents() for node in self.children.values()) + 1
 
 
     def itempath(self):

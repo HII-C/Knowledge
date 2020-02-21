@@ -1,0 +1,33 @@
+{
+    "run": {
+        "bin": 10000,
+        "cores": 2,
+        "force": false,
+        "source": "transactions",
+        "goal": "associations",
+        "log": "/home/benjamin/Documents/HII-C/data/models/apiv1/basic_association/test/log.txt",
+        "verbosity": "info"
+    },
+    "transactions": {
+        "file": "/home/benjamin/Documents/HII-C/data/models/apiv1/basic_association/test/transactions.csv",
+        "max_support": 1.0,
+        "min_support": 0.01
+    },
+    "tree": {
+        "file": "/home/benjamin/Documents/HII-C/data/models/apiv1/basic_association/test/tree.p",
+        "save": true
+    },
+    "patterns": {
+        "file": "/home/benjamin/Documents/HII-C/data/models/apiv1/basic_association/test/patterns.csv",
+        "max_size": 5,
+        "max_support": 1.0,
+        "min_support": 0.01,
+        "save": true
+    },
+    "associations": {
+        "file": "/home/benjamin/Documents/HII-C/data/models/apiv1/basic_association/test/associations.csv",
+        "min_confidence": 0.95,
+        "min_support": 0.01,
+        "save": true
+    }
+}

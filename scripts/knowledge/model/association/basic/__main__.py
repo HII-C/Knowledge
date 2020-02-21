@@ -2,16 +2,18 @@
 import sys
 import logging
 
-from pkgutil import get_data
 from argparse import ArgumentParser
 from getpass import getpass
 
-from knowledge.model.association.model import AssociationModel
+from knowledge.model.association.basic.model import BasicAssociationModel
+from knowledge.util.filesys import FilesysUtil
 
-# needed for pickling/unpickling large trees
+# needed for pickling/unpickling large objects
+
 sys.setrecursionlimit(10000)
 
 # command line argument parsing
+
 parser = ArgumentParser(prog='association model runner',
     description='run an association building model')
 parser.add_argument('--config', type=str, dest='config', default=None,
@@ -25,22 +27,27 @@ parser.add_argument('--log', type=str, dest='log', default=None,
 args = parser.parse_args()
 
 # configure logging
-hanlders = []
-hanlders.append(logging.StreamHandler())
+
+handlers = []
+handlers.append(logging.StreamHandler())
+frmt = '%(asctime)s %(levelname)s %(filename)s:%(lineno)s %(message)s'
 if args.log is not None:
-    hanlders.append(logging.FileHandler(args.log, 'w'))
+    handlers.append(logging.FileHandler(args.log, 'w'))
 logging.basicConfig(
-    format='%(asctime)s %(levelname)s %(filename)s:%(lineno)s %(message)s',
+    format=frmt,
     level=logging.INFO,
-    handlers=hanlders)
-logging.info('Running association model module.')
+    handlers=handlers)
+logging.info('Launching association model module.')
 
 # check for config and specs files
+
 try:
     if args.config is None:
-        args.config = get_data('knowledge', 'model/association/config.json')
+        args.config = FilesysUtil.package_resource(
+            'knowledge.model.association.basic', 'config.json')
     if args.specs is None:
-        args.specs = get_data('knowledge', 'model/association/specs.json')
+        args.specs = FilesysUtil.package_resource(
+            'knowledge.model.association.basic', 'specs.json')
     if args.config is None or args.specs is None:
         raise FileNotFoundError
 except Exception:
@@ -50,26 +57,25 @@ except Exception:
     exit()
     
 # validate config file against specs file
-logging.info('Validating configuration with specifications.')
-config = AssociationModel.validate_config(args.config, args.specs)
 
-# database credentials handling
-if AssociationModel.mysql():
-    database = config['database']
-    if database['user'] is None:
-        database['user'] = input('SQL username for localhost: ')
-    if database['user'] is None or database['password'] is None:
-        logging.info(f'SQL password for {database["user"]}@localhost: ')
-        database['password'] = getpass('')
-else:
-    logging.info('Model running without SQL environment.')
+logging.info('Validating configuration with specifications.')
+config = BasicAssociationModel.configure(args.config, args.specs)
+
+# reconfigure logging (if applicable)
+
+if config['run']['log'] is not None and args.log is None:
+    logger = logging.getLogger()
+    logger.addHandler(logging.FileHandler(config['run']['log'], 'w'))
+    logger.setLevel(getattr(logging, config['run']['verbosity'].upper()))
 
 # run model
+
 try:
-    model = AssociationModel(database)
-    model.run(config)
+    logging.info('Running association model.')
+    model = BasicAssociationModel(config)
+    model.run()
+    logging.info('Assoication model run complete.')
 except Exception:
     logging.exception('Fatal error while running association model.')
-    exit()
 
-logging.info('Assoication model run complete.')
+

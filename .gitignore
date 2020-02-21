@@ -7,6 +7,9 @@
 build
 dist
 
-
 # script cache
 __pycache__
+
+# temp
+temp
+run
