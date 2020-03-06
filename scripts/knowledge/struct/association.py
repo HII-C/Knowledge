@@ -6,6 +6,7 @@ import os
 import logging as log
 
 from itertools import combinations
+from collections import defaultdict
 from multiprocessing import Pool, Manager, Value
 from ctypes import c_uint64
 
@@ -140,6 +141,25 @@ class Association:
     def __init__(self, patterns):
         self.patterns = patterns
 
+    
+    @classmethod
+    def load_associations(self, filepath):
+        csvfile = multiopen(filepath, mode='r')
+        csvreader = csv.reader(csvfile, delimiter=',', quotechar='"')
+        associations = defaultdict(list)
+
+        for row in csvreader:
+            associations[frozenset(row[1].split(','))].append(
+                frozenset(row[0].split(',')), *row[2:])
+
+        csvfile.close()
+        return associations
+
+    
+    @classmethod
+    def filter_associations(self, associations):
+        pass
+
 
     def get_association(self, consequent, antecedent):
         'get a specific association from patterns'
@@ -168,7 +188,6 @@ class Association:
         pool.apply_async(write_associations, (queue, filepath, cols))
 
         chunksize = max(len(self.patterns) // (cores * 4), 1)
-        data = lambda: self.patterns
         jobs = chunks(list(self.patterns.keys()), chunksize)
         tasks = ((queue, self.patterns, keys, min_support, min_confidence) 
             for keys in jobs)

@@ -3,7 +3,6 @@ pandas
 scikit-learn
 numpy
 mysqlclient
-mlxtend
 dropbox
 psutil
 stickytape

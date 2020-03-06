@@ -1,6 +1,5 @@
 {
     "run": {
-        "bin": 10000,
         "cores": 4,
         "force": false,
         "source": "transactions",
@@ -8,14 +7,10 @@
         "log": null,
         "verbosity": "info"
     },
-    "items": {
-        "max_support": 0.75,
-        "min_support": 0.01,
-        "source": [
-            "conditions",
-            "observations",
-            "treatments"
-        ]
+    "transactions": {
+        "file": null,
+        "max_support": 1.0,
+        "min_support": 0.01
     },
     "tree": {
         "file": null,
@@ -24,7 +19,7 @@
     "patterns": {
         "file": null,
         "max_size": 5,
-        "max_support": 0.8,
+        "max_support": 1.0,
         "min_support": 0.01,
         "save": true
     },

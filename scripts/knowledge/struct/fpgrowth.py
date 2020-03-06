@@ -15,7 +15,7 @@ count = None
 n = None
 
 
-def mulitopen(filepath, **kwargs):
+def multiopen(filepath, **kwargs):
     'autodetect compressed file'
 
     if filepath.split('.')[-1] == 'gz':
@@ -103,7 +103,7 @@ class Fpgrowth:
         
     @classmethod
     def calculate_support(self, filepath):
-        csvfile = mulitopen(filepath, mode='r')
+        csvfile = multiopen(filepath, mode='r')
         csvreader = csv.reader(csvfile, delimiter=',', quotechar='"')
         count = 0
         n = 1
@@ -140,11 +140,11 @@ class Fpgrowth:
     
     @classmethod
     def load_patterns(self, filepath):
-        csvfile = mulitopen(filepath, mode='r')
-        csvwriter = csv.reader(csvfile, delimiter=',', quotechar='"')
+        csvfile = multiopen(filepath, mode='r')
+        csvreader = csv.reader(csvfile, delimiter=',', quotechar='"')
         patterns = {}
 
-        for row in csvwriter:
+        for row in csvreader:
             patterns[frozenset(row[:-1])] = int(row[-1])
 
         csvfile.close()
@@ -153,7 +153,7 @@ class Fpgrowth:
 
     @classmethod
     def write_patterns(self, patterns, filepath):
-        csvfile = mulitopen(filepath, mode='w')
+        csvfile = multiopen(filepath, mode='w')
         csvwriter = csv.writer(csvfile, delimiter=',', quotechar='"')
 
         for codes, support in patterns.items():
@@ -163,7 +163,7 @@ class Fpgrowth:
 
 
     def load_transactions(self, filepath):
-        csvfile = mulitopen(filepath, mode='r')
+        csvfile = multiopen(filepath, mode='r')
         csvreader = csv.reader(csvfile, delimiter=',', quotechar='"')
         count = 0
         n = 1
@@ -354,7 +354,7 @@ class Node:
 
 
     def count_descendents(self):
-        return sum(node.count_descendents() for node in self.children.values()) + 1
+        return sum(node.count_descendents() + 1 for node in self.children.values())
 
 
     def itempath(self):

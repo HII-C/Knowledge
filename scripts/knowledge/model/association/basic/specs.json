@@ -1,12 +1,5 @@
 {
     "run": {
-        "bin": {
-            "type": "int",
-            "description": "bin size for fetching items from database",
-            "required": false,
-            "default": 1000,
-            "min": 1
-        },
         "cores": {
             "type": "int",
             "description": "number of available cores for model run; use \"null\" to use all available cores",

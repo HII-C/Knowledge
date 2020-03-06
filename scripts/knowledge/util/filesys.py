@@ -87,10 +87,14 @@ class FilesysUtil:
 
 
     @classmethod
-    def package_resource(self, package, resource):
+    def package_resource(self, package, resource, error=False):
         'get filepath of a package file'
+
+        fetch = None
         try:
             module = os.path.dirname(sys.modules[package].__file__)
-            return os.path.join(module, resource)
-        except:
-            return None
+            fetch = os.path.join(module, resource)
+        except Exception as err:
+            if error:
+                raise err
+        return fetch

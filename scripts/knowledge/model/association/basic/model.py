@@ -14,7 +14,7 @@ from knowledge.util.config import ConfigUtil
 from knowledge.util.filesys import FilesysUtil
 
 
-def mulitopen(filepath, **kwargs):
+def multiopen(filepath, **kwargs):
     'autodetect compressed file'
 
     if filepath.split('.')[-1] == 'gz':
@@ -41,14 +41,15 @@ class BasicAssociationModel:
 
 
     @classmethod
-    def configure(self, config_file, specs_file, validate=True):
+    def configure(self, config_file, specs_file=None, validate=True):
         config = ConfigUtil.load_config(config_file)
-        specs = ConfigUtil.load_specs(specs_file)
 
         if validate:
+            specs = ConfigUtil.load_specs(specs_file)
+            config = ConfigUtil.verify_config(specs, config)
             config = self.validate(config)
 
-        return ConfigUtil.verify_config(specs, config)
+        return config
 
 
     @classmethod
@@ -99,7 +100,7 @@ class BasicAssociationModel:
         if warn:
             log.warning(f'{warn} potential issues found in model configuration '
                 '(see above warnings). Would you like to continue model run? [Y/n]')
-            if not input().lower() in (1, 'y', 'yes', 'yeet'):
+            if not input().lower() in ('1', 'y', 'yes', 'yeet'):
                 log.error('User chose to terminate process.')
                 raise RuntimeError
 
@@ -127,7 +128,7 @@ class BasicAssociationModel:
         if source == Activity.TREE:
             filepath = self.config['tree']['file']
             log.info(f'Loading frequent patterns tree from {filepath}.')
-            data = mulitopen(filepath, mode='rb')
+            data = multiopen(filepath, mode='rb')
             fpgrowth = pickle.load(data)
             data.close()
 
@@ -144,7 +145,7 @@ class BasicAssociationModel:
             if self.config['tree']['save']:
                 log.info(f'Saving frequent patterns tree to {filepath}.')
                 filepath = self.config['tree']['file']
-                data = mulitopen(filepath, mode='wb')
+                data = multiopen(filepath, mode='wb')
                 pickle.dump(fpgrowth, data)
                 data.close()
 

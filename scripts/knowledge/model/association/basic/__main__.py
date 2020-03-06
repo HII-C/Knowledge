@@ -24,6 +24,8 @@ parser.add_argument('--specs', type=str, dest='specs', default=None,
         'this this module\'s build directory'))
 parser.add_argument('--log', type=str, dest='log', default=None,
     help='specify a log file location; by default the log will not be saved')
+parser.add_argument('--dont-validate', dest='validate', action='store_false',
+    default=True)
 args = parser.parse_args()
 
 # configure logging
@@ -45,10 +47,10 @@ try:
     if args.config is None:
         args.config = FilesysUtil.package_resource(
             'knowledge.model.association.basic', 'config.json')
-    if args.specs is None:
+    if args.specs is None and args.validate:
         args.specs = FilesysUtil.package_resource(
             'knowledge.model.association.basic', 'specs.json')
-    if args.config is None or args.specs is None:
+    if args.config is None or (args.specs is None and args.validate):
         raise FileNotFoundError
 except Exception:
     logging.exception('Default config/specs file(s) not found; fix packaging '
@@ -59,13 +61,15 @@ except Exception:
 # validate config file against specs file
 
 logging.info('Validating configuration with specifications.')
-config = BasicAssociationModel.configure(args.config, args.specs)
-
+config = BasicAssociationModel.configure(args.config, args.specs, validate=args.validate)
+    
 # reconfigure logging (if applicable)
 
 if config['run']['log'] is not None and args.log is None:
     logger = logging.getLogger()
-    logger.addHandler(logging.FileHandler(config['run']['log'], 'w'))
+    handler = logging.FileHandler(config['run']['log'], 'w')
+    handler.setFormatter(frmt)
+    logger.addHandler(handler)
     logger.setLevel(getattr(logging, config['run']['verbosity'].upper()))
 
 # run model
@@ -77,5 +81,3 @@ try:
     logging.info('Assoication model run complete.')
 except Exception:
     logging.exception('Fatal error while running association model.')
-
-

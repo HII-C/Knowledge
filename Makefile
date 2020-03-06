@@ -1,10 +1,11 @@
-deploy:
+
+build:
 	stickytape "scripts/knowledge/model/association/basic/__main__.py" \
 		--add-python-path "scripts/" \
 		--output-file "deploy/basic_association.py"
 
-build:
-	python setup.py
+test:
+	
 
 install:
 	pip install ./
@@ -16,4 +17,3 @@ clean:
 	rm *.egg-info
 	rm -r build/
 	rm -r dist/
-	rm deploy/*
